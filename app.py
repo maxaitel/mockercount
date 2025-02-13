@@ -12,6 +12,7 @@ from functools import wraps
 import time
 import json
 from dotenv import load_dotenv
+import secrets
 
 # Load environment variables
 load_dotenv()
@@ -143,18 +144,22 @@ class CoffeeEntry(db.Model):
     coffee_count = db.Column(db.Integer, default=1)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     photos = db.relationship('CoffeePhoto', backref='entry', lazy=True, order_by='CoffeePhoto.timestamp.desc()')
-    custom_level = db.Column(db.Integer, nullable=True)  # Override automatic level
-    custom_title = db.Column(db.String(100), nullable=True)  # Custom title
-    custom_description = db.Column(db.String(200), nullable=True)  # Custom description
-    custom_color_scheme = db.Column(db.String(50), nullable=True)  # Custom color scheme
-    custom_emoji = db.Column(db.String(10), nullable=True)  # Custom emoji
-    custom_badges = db.Column(db.String(500), nullable=True)  # Store as JSON string
+    unlocked_achievements = db.relationship('UnlockedAchievement', backref='user', lazy=True)
 
 class CoffeePhoto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     entry_id = db.Column(db.Integer, db.ForeignKey('coffee_entry.id'), nullable=False)
     photo_path = db.Column(db.String(200))
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+class UnlockedAchievement(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('coffee_entry.id'), nullable=False)
+    title = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.String(200))
+    emoji = db.Column(db.String(10))
+    unlocked_at = db.Column(db.DateTime, default=datetime.utcnow)
+    achievement_type = db.Column(db.String(50))  # e.g., 'streak', 'volume', 'consistency'
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -267,208 +272,262 @@ def get_user_badge_info(user, stats):
         }
     }
 
-    # If user has custom level settings, use those instead
-    if user.custom_level is not None:
-        badge_info['level'] = user.custom_level
-        if user.custom_title:
-            badge_info['title'] = user.custom_title
-        if user.custom_description:
-            badge_info['description'] = user.custom_description
-        if user.custom_color_scheme:
-            badge_info['color_scheme'] = user.custom_color_scheme
-        if user.custom_emoji:
-            badge_info['emoji'] = user.custom_emoji
-    else:
-        # Use existing level calculation logic
-        if user.coffee_count >= 1000:
-            badge_info.update({
-                'level': 10,
-                'title': 'Coffee Deity',
-                'description': 'A legendary figure whose coffee prowess transcends mortal understanding!',
-                'color_scheme': 'rainbow',
-                'emoji': '⚡'
-            })
-        elif user.coffee_count >= 500:
-            badge_info.update({
-                'level': 9,
-                'title': 'Coffee Legend',
-                'description': 'Their name echoes through the halls of coffee history!',
-                'color_scheme': 'mythic',
-                'emoji': '🌟'
-            })
-        elif user.coffee_count >= 250:
-            badge_info.update({
-                'level': 8,
-                'title': 'Coffee Archmaster',
-                'description': 'Has unlocked the deepest secrets of coffee mastery!',
-                'color_scheme': 'crystal',
-                'emoji': '🔮'
-            })
-        elif user.coffee_count >= 100:
-            badge_info.update({
-                'level': 7,
-                'title': 'Coffee Grandmaster',
-                'description': 'A true coffee connoisseur whose expertise knows no bounds!',
-                'color_scheme': 'gold',
-                'emoji': '👑'
-            })
-        elif user.coffee_count >= 75:
-            badge_info.update({
-                'level': 6,
-                'title': 'Coffee Sage',
-                'description': 'Has achieved coffee enlightenment through dedication!',
-                'color_scheme': 'silver',
-                'emoji': '🎯'
-            })
-        elif user.coffee_count >= 50:
-            badge_info.update({
-                'level': 5,
-                'title': 'Coffee Virtuoso',
-                'description': 'A master of the coffee arts!',
-                'color_scheme': 'emerald',
-                'emoji': '💫'
-            })
-        elif user.coffee_count >= 30:
-            badge_info.update({
-                'level': 4,
-                'title': 'Coffee Master',
-                'description': 'Well-versed in the ways of coffee!',
-                'color_scheme': 'sapphire',
-                'emoji': '⭐'
-            })
-        elif user.coffee_count >= 20:
-            badge_info.update({
-                'level': 3,
-                'title': 'Coffee Pro',
-                'description': 'Rapidly ascending the coffee ranks!',
-                'color_scheme': 'ruby',
-                'emoji': '🏆'
-            })
-        elif user.coffee_count >= 10:
-            badge_info.update({
-                'level': 2,
-                'title': 'Coffee Enthusiast',
-                'description': 'Developing a true passion for coffee!',
-                'color_scheme': 'copper',
-                'emoji': '☕'
-            })
-    
-    # Add custom badges if they exist
-    if user.custom_badges:
-        try:
-            custom_badges = json.loads(user.custom_badges)
-            for badge in custom_badges:
-                badge_info['achievements'].append({
-                    'title': badge['title'],
-                    'description': badge.get('description', ''),
-                    'emoji': badge.get('emoji', '⭐')
-                })
-        except json.JSONDecodeError:
-            pass
+    # Calculate level based on coffee count
+    if user.coffee_count >= 1000:
+        badge_info.update({
+            'level': 10,
+            'title': 'Coffee Deity',
+            'description': 'A legendary figure whose coffee prowess transcends mortal understanding!',
+            'color_scheme': 'rainbow',
+            'emoji': '⚡'
+        })
+    elif user.coffee_count >= 500:
+        badge_info.update({
+            'level': 9,
+            'title': 'Coffee Legend',
+            'description': 'Their name echoes through the halls of coffee history!',
+            'color_scheme': 'mythic',
+            'emoji': '🌟'
+        })
+    elif user.coffee_count >= 250:
+        badge_info.update({
+            'level': 8,
+            'title': 'Coffee Archmaster',
+            'description': 'Has unlocked the deepest secrets of coffee mastery!',
+            'color_scheme': 'crystal',
+            'emoji': '🔮'
+        })
+    elif user.coffee_count >= 100:
+        badge_info.update({
+            'level': 7,
+            'title': 'Coffee Grandmaster',
+            'description': 'A true coffee connoisseur whose expertise knows no bounds!',
+            'color_scheme': 'gold',
+            'emoji': '👑'
+        })
+    elif user.coffee_count >= 75:
+        badge_info.update({
+            'level': 6,
+            'title': 'Coffee Sage',
+            'description': 'Has achieved coffee enlightenment through dedication!',
+            'color_scheme': 'silver',
+            'emoji': '🎯'
+        })
+    elif user.coffee_count >= 50:
+        badge_info.update({
+            'level': 5,
+            'title': 'Coffee Virtuoso',
+            'description': 'A master of the coffee arts!',
+            'color_scheme': 'emerald',
+            'emoji': '💫'
+        })
+    elif user.coffee_count >= 30:
+        badge_info.update({
+            'level': 4,
+            'title': 'Coffee Master',
+            'description': 'Well-versed in the ways of coffee!',
+            'color_scheme': 'sapphire',
+            'emoji': '⭐'
+        })
+    elif user.coffee_count >= 20:
+        badge_info.update({
+            'level': 3,
+            'title': 'Coffee Pro',
+            'description': 'Rapidly ascending the coffee ranks!',
+            'color_scheme': 'ruby',
+            'emoji': '🏆'
+        })
+    elif user.coffee_count >= 10:
+        badge_info.update({
+            'level': 2,
+            'title': 'Coffee Enthusiast',
+            'description': 'Developing a true passion for coffee!',
+            'color_scheme': 'copper',
+            'emoji': '☕'
+        })
 
-    # Streak-specific emojis and messages based on streak length
-    current_streak = stats.get('current_streak', 0)
-    if current_streak >= 30:
-        badge_info['streak_info'] = {
-            'emoji': '🔥',
-            'message': 'Monthly Milestone: 30 Day Streak',
-            'level': 'legendary'
-        }
-    elif current_streak >= 14:
-        badge_info['streak_info'] = {
-            'emoji': '🔥',
-            'message': 'Two Week Streak',
-            'level': 'epic'
-        }
-    elif current_streak >= 7:
-        badge_info['streak_info'] = {
-            'emoji': '🔥',
-            'message': 'Week-long Streak',
-            'level': 'awesome'
-        }
-    elif current_streak >= 2:
-        badge_info['streak_info'] = {
-            'emoji': '🔥',
-            'message': 'Active Streak',
-            'level': 'active'
-        }
-
-    # Enhanced streak achievements
+    # Add achievements based on coffee stats
     achievements = []
     
-    # Current streak achievements with more tiers
+    # Streak achievements
     if stats.get('current_streak', 0) >= 30:
         achievements.append({
             'title': 'Monthly Milestone',
-            'description': '30 consecutive days',
-            'emoji': '🔥'
+            'description': '30 consecutive days of coffee dedication!',
+            'emoji': '📅',
+            'type': 'streak'
         })
     elif stats.get('current_streak', 0) >= 14:
         achievements.append({
-            'title': 'Two Week Streak',
-            'description': '14 consecutive days',
-            'emoji': '🔥'
+            'title': 'Two Week Warrior',
+            'description': '14 consecutive days of coffee commitment!',
+            'emoji': '🔥',
+            'type': 'streak'
         })
     elif stats.get('current_streak', 0) >= 7:
         achievements.append({
-            'title': 'Week Streak',
-            'description': '7 consecutive days',
-            'emoji': '🔥'
+            'title': 'Week Champion',
+            'description': 'A full week of daily coffee!',
+            'emoji': '🌅',
+            'type': 'streak'
         })
-    elif stats.get('current_streak', 0) >= 2:
+
+    # Volume achievements
+    if user.coffee_count >= 1000:
         achievements.append({
-            'title': 'Active Streak',
-            'description': 'Multiple day streak',
-            'emoji': '🔥'
+            'title': 'Coffee Legend',
+            'description': 'Reached the legendary 1000 coffee milestone!',
+            'emoji': '👑',
+            'type': 'volume'
         })
-    
-    # Longest streak achievements with more recognition
-    longest_streak = stats.get('longest_streak', {}).get('days', 0)
-    if longest_streak >= 100:
+    elif user.coffee_count >= 500:
         achievements.append({
-            'title': 'Century Streak',
-            'description': f'{longest_streak} day record streak',
-            'emoji': '🔥'
+            'title': 'Coffee Elite',
+            'description': 'Joined the elite 500 coffee club!',
+            'emoji': '🌟',
+            'type': 'volume'
         })
-    elif longest_streak >= 50:
+    elif user.coffee_count >= 100:
         achievements.append({
-            'title': 'Extended Streak',
-            'description': f'{longest_streak} day record streak',
-            'emoji': '🔥'
+            'title': 'Century Club',
+            'description': 'Triple digits! 100 coffees and counting!',
+            'emoji': '💯',
+            'type': 'volume'
         })
-    elif longest_streak >= 30:
+    elif user.coffee_count >= 50:
         achievements.append({
-            'title': 'Monthly Record',
-            'description': f'{longest_streak} day record streak',
-            'emoji': '🔥'
+            'title': 'Halfway Hero',
+            'description': 'Reached the impressive 50 coffee milestone!',
+            'emoji': '🏆',
+            'type': 'volume'
         })
-    
-    # Daily record achievements
+    elif user.coffee_count >= 25:
+        achievements.append({
+            'title': 'Quarter Century',
+            'description': '25 coffees logged and documented!',
+            'emoji': '🌟',
+            'type': 'volume'
+        })
+    elif user.coffee_count >= 10:
+        achievements.append({
+            'title': 'Double Digits',
+            'description': 'Reached 10 coffees! The journey begins!',
+            'emoji': '🎯',
+            'type': 'volume'
+        })
+
+    # Consistency achievements
+    avg_per_day = stats.get('avg_per_day', 0)
+    if avg_per_day >= 3:
+        achievements.append({
+            'title': 'Triple Shot King',
+            'description': 'Averaging 3+ coffees per day!',
+            'emoji': '👑',
+            'type': 'consistency'
+        })
+    elif avg_per_day >= 2:
+        achievements.append({
+            'title': 'Double Shot Pro',
+            'description': 'Averaging 2+ coffees per day!',
+            'emoji': '⚡',
+            'type': 'consistency'
+        })
+    elif avg_per_day >= 1:
+        achievements.append({
+            'title': 'Daily Devotee',
+            'description': 'Averaging at least one coffee per day!',
+            'emoji': '☕',
+            'type': 'consistency'
+        })
+
+    # Time-based achievements
+    days_active = stats.get('days_active', 0)
+    if days_active >= 365:
+        achievements.append({
+            'title': 'Coffee Veteran',
+            'description': 'One year of coffee tracking dedication!',
+            'emoji': '🎖️',
+            'type': 'veteran'
+        })
+    elif days_active >= 180:
+        achievements.append({
+            'title': 'Coffee Enthusiast',
+            'description': 'Six months of coffee tracking!',
+            'emoji': '🏅',
+            'type': 'veteran'
+        })
+    elif days_active >= 90:
+        achievements.append({
+            'title': 'Coffee Regular',
+            'description': 'Three months of coffee tracking!',
+            'emoji': '🎯',
+            'type': 'veteran'
+        })
+    elif days_active >= 30:
+        achievements.append({
+            'title': 'Coffee Initiate',
+            'description': 'One month of coffee tracking!',
+            'emoji': '🌱',
+            'type': 'veteran'
+        })
+
+    # Special achievements
     if stats.get('most_in_day', {}).get('count', 0) >= 5:
         achievements.append({
-            'title': 'High Volume',
-            'description': f'{stats["most_in_day"]["count"]} coffees in one day',
-            'emoji': '☕'
+            'title': 'Coffee Marathon',
+            'description': '5+ coffees in a single day!',
+            'emoji': '🏃',
+            'type': 'special'
         })
-    
-    # Consistency achievements
-    if stats.get('avg_per_day', 0) >= 2:
+
+    if stats.get('longest_streak', {}).get('days', 0) >= 30:
         achievements.append({
-            'title': 'Daily Double',
-            'description': 'Averages 2+ coffees per day',
-            'emoji': '☕'
+            'title': 'Iron Will',
+            'description': 'Achieved a 30+ day streak!',
+            'emoji': '⚔️',
+            'type': 'special'
         })
-    
-    # Veteran status
-    if stats.get('days_active', 0) >= 365:
-        achievements.append({
-            'title': 'Year-Round',
-            'description': 'Over a year of coffee tracking',
-            'emoji': '☕'
-        })
-    
+
+    # Add achievements to badge info
     badge_info['achievements'] = achievements
+    
     return badge_info
+
+def unlock_achievement(user, achievement):
+    """Unlock an achievement for a user if they don't already have it."""
+    existing = UnlockedAchievement.query.filter_by(
+        user_id=user.id,
+        title=achievement['title']
+    ).first()
+    
+    if not existing:
+        new_achievement = UnlockedAchievement(
+            user_id=user.id,
+            title=achievement['title'],
+            description=achievement['description'],
+            emoji=achievement['emoji'],
+            achievement_type=achievement['type']
+        )
+        db.session.add(new_achievement)
+        try:
+            db.session.commit()
+            # Return True to indicate a new achievement was unlocked
+            return True
+        except:
+            db.session.rollback()
+    return False
+
+def check_and_unlock_achievements(user):
+    """Check and unlock any new achievements for a user."""
+    stats = get_user_stats(user)
+    badge_info = get_user_badge_info(user, stats)
+    
+    newly_unlocked = []
+    for achievement in badge_info['achievements']:
+        if unlock_achievement(user, achievement):
+            newly_unlocked.append(achievement)
+    
+    return newly_unlocked
 
 @app.route('/user/<int:user_id>')
 def user_history(user_id):
@@ -483,6 +542,38 @@ def user_card(user_id):
     stats = get_user_stats(user)
     badge_info = get_user_badge_info(user, stats)
     return render_template('user_card.html', user=user, stats=stats, badge_info=badge_info)
+
+@app.route('/user/<int:user_id>/achievements')
+def user_achievements(user_id):
+    user = CoffeeEntry.query.get_or_404(user_id)
+    stats = get_user_stats(user)
+    badge_info = get_user_badge_info(user, stats)
+    
+    # Group achievements by type
+    achievements_by_type = defaultdict(list)
+    
+    # First, ensure all achievements are unlocked in the database
+    for achievement in badge_info['achievements']:
+        unlock_achievement(user, achievement)
+    
+    # Now get all unlocked achievements from the database
+    unlocked_achievements = UnlockedAchievement.query.filter_by(user_id=user.id).all()
+    for achievement in unlocked_achievements:
+        achievements_by_type[achievement.achievement_type].append({
+            'title': achievement.title,
+            'description': achievement.description,
+            'emoji': achievement.emoji,
+            'type': achievement.achievement_type,
+            'unlocked_at': achievement.unlocked_at
+        })
+    
+    return render_template(
+        'user_achievements.html',
+        user=user,
+        stats=stats,
+        badge_info=badge_info,
+        achievements_by_type=dict(achievements_by_type)
+    )
 
 def is_valid_name(name):
     """Check if the name is in valid first last format."""
@@ -566,18 +657,34 @@ def submit():
         photo.save(os.path.join('static', photo_path))
 
         existing_entry = CoffeeEntry.query.filter_by(name=name).first()
+        old_coffee_count = 0
         if existing_entry:
+            old_coffee_count = existing_entry.coffee_count
             existing_entry.coffee_count += 1
             new_photo = CoffeePhoto(entry_id=existing_entry.id, photo_path=photo_path)
             db.session.add(new_photo)
+            user = existing_entry
         else:
             new_entry = CoffeeEntry(name=name)
             db.session.add(new_entry)
             db.session.flush()  # This ensures we get the id of the new entry
             new_photo = CoffeePhoto(entry_id=new_entry.id, photo_path=photo_path)
             db.session.add(new_photo)
+            user = new_entry
 
         db.session.commit()
+
+        # Check for level up
+        level_up = check_level_up(user, old_coffee_count)
+        if level_up:
+            session['level_up'] = level_up
+
+        # Check for new achievements
+        newly_unlocked = check_and_unlock_achievements(user)
+        if newly_unlocked:
+            achievement_names = [a['title'] for a in newly_unlocked]
+            flash(f'🎉 New achievement{"s" if len(newly_unlocked) > 1 else ""} unlocked: {", ".join(achievement_names)}!')
+
         flash('Coffee added successfully! ☕')
     except Exception as e:
         flash('Error uploading photo. Please try again.')
@@ -635,15 +742,28 @@ def delete_photo(photo_id):
 def delete_entry(entry_id):
     entry = CoffeeEntry.query.get_or_404(entry_id)
     
-    # Delete all associated photos
+    # First delete all unlocked achievements
+    UnlockedAchievement.query.filter_by(user_id=entry.id).delete()
+    
+    # Delete all associated photos and their files
     for photo in entry.photos:
         file_path = os.path.join('static', photo.photo_path)
         if os.path.exists(file_path):
             os.remove(file_path)
     
+    # Delete all photos from database
+    CoffeePhoto.query.filter_by(entry_id=entry.id).delete()
+    
+    # Finally delete the entry itself
     db.session.delete(entry)
-    db.session.commit()
-    flash('Entry and all associated photos deleted successfully')
+    
+    try:
+        db.session.commit()
+        flash('Entry and all associated data deleted successfully')
+    except Exception as e:
+        db.session.rollback()
+        flash('Error deleting entry: ' + str(e))
+    
     return redirect(url_for('admin'))
 
 @app.route('/admin/change_password', methods=['POST'])
@@ -681,41 +801,11 @@ def update_user(user_id):
     try:
         user = CoffeeEntry.query.get_or_404(user_id)
         
-        # Update custom level and badges
-        if 'custom_level' in request.form:
-            try:
-                custom_level = int(request.form['custom_level'])
-                if 1 <= custom_level <= 10:
-                    user.custom_level = custom_level
-                else:
-                    return jsonify({'message': 'Custom level must be between 1 and 10'}), 400
-            except ValueError:
-                return jsonify({'message': 'Invalid custom level value'}), 400
-        
         # Update other custom fields
-        user.custom_title = request.form.get('custom_title', '').strip() or None
-        user.custom_description = request.form.get('custom_description', '').strip() or None
-        user.custom_color_scheme = request.form.get('custom_color_scheme', '').strip() or None
-        user.custom_emoji = request.form.get('custom_emoji', '').strip() or None
-        
-        # Handle custom badges
-        custom_badges = []
-        badge_titles = request.form.getlist('badge_title[]')
-        badge_descriptions = request.form.getlist('badge_description[]')
-        badge_emojis = request.form.getlist('badge_emoji[]')
-        
-        for i in range(len(badge_titles)):
-            if badge_titles[i].strip():  # Only add if title is not empty
-                custom_badges.append({
-                    'title': badge_titles[i].strip(),
-                    'description': badge_descriptions[i].strip(),
-                    'emoji': badge_emojis[i].strip() or '⭐'  # Default emoji if none provided
-                })
-        
-        if custom_badges:
-            user.custom_badges = json.dumps(custom_badges)
-        else:
-            user.custom_badges = None
+        user.favorite_time = request.form.get('favorite_time', '').strip() or None
+        user.coffee_variety = int(request.form.get('coffee_variety', 1))
+        user.perfect_timing = int(request.form.get('perfect_timing', 0))
+        user.coffee_master_points = int(request.form.get('coffee_master_points', 0))
         
         db.session.commit()
         return jsonify({'message': 'User settings updated successfully'})
@@ -727,12 +817,10 @@ def update_user(user_id):
 @login_required
 def reset_user(user_id):
     user = CoffeeEntry.query.get_or_404(user_id)
-    user.custom_level = None
-    user.custom_title = None
-    user.custom_description = None
-    user.custom_color_scheme = None
-    user.custom_emoji = None
-    user.custom_badges = None
+    user.favorite_time = None
+    user.coffee_variety = 1
+    user.perfect_timing = 0
+    user.coffee_master_points = 0
     db.session.commit()
     return jsonify({'message': 'User customizations reset successfully'})
 
@@ -741,13 +829,86 @@ def reset_user(user_id):
 def get_user(user_id):
     user = CoffeeEntry.query.get_or_404(user_id)
     return jsonify({
-        'custom_level': user.custom_level,
-        'custom_title': user.custom_title,
-        'custom_description': user.custom_description,
-        'custom_color_scheme': user.custom_color_scheme,
-        'custom_emoji': user.custom_emoji,
-        'custom_badges': user.custom_badges
+        'favorite_time': user.favorite_time,
+        'coffee_variety': user.coffee_variety,
+        'perfect_timing': user.perfect_timing,
+        'coffee_master_points': user.coffee_master_points
     })
+
+def check_level_up(user, old_coffee_count):
+    """Check if user has leveled up and return level up info if they did."""
+    old_level = 1
+    if old_coffee_count >= 1000:
+        old_level = 10
+    elif old_coffee_count >= 500:
+        old_level = 9
+    elif old_coffee_count >= 250:
+        old_level = 8
+    elif old_coffee_count >= 100:
+        old_level = 7
+    elif old_coffee_count >= 75:
+        old_level = 6
+    elif old_coffee_count >= 50:
+        old_level = 5
+    elif old_coffee_count >= 30:
+        old_level = 4
+    elif old_coffee_count >= 20:
+        old_level = 3
+    elif old_coffee_count >= 10:
+        old_level = 2
+
+    new_level = 1
+    if user.coffee_count >= 1000:
+        new_level = 10
+    elif user.coffee_count >= 500:
+        new_level = 9
+    elif user.coffee_count >= 250:
+        new_level = 8
+    elif user.coffee_count >= 100:
+        new_level = 7
+    elif user.coffee_count >= 75:
+        new_level = 6
+    elif user.coffee_count >= 50:
+        new_level = 5
+    elif user.coffee_count >= 30:
+        new_level = 4
+    elif user.coffee_count >= 20:
+        new_level = 3
+    elif user.coffee_count >= 10:
+        new_level = 2
+
+    if new_level > old_level:
+        stats = get_user_stats(user)
+        badge_info = get_user_badge_info(user, stats)
+        return {
+            'old_level': old_level,
+            'new_level': new_level,
+            'title': badge_info['title'],
+            'description': badge_info['description'],
+            'emoji': badge_info['emoji'],
+            'color_scheme': badge_info['color_scheme']
+        }
+    return None
+
+@app.route('/increment/<int:user_id>', methods=['POST'])
+def increment_coffee(user_id):
+    user = CoffeeEntry.query.get_or_404(user_id)
+    old_count = user.coffee_count
+    user.coffee_count += 1
+    
+    # Check for level up
+    level_up = check_level_up(user, old_count)
+    if level_up:
+        session['level_up'] = level_up
+    
+    db.session.commit()
+    return redirect(url_for('index'))
+
+@app.route('/clear_level_up', methods=['POST'])
+def clear_level_up():
+    if 'level_up' in session:
+        session.pop('level_up')
+    return '', 204
 
 if __name__ == '__main__':
     with app.app_context():

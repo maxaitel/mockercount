@@ -171,4 +171,6 @@ cython_debug/
 .pypirc
 
 #stuff
-./static/uploads
+static/uploads
+*.db
+migrations/versions

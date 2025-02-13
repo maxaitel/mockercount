@@ -8,6 +8,9 @@ Group=ubuntu
 WorkingDirectory=/home/ubuntu/maxdev/mockercount
 Environment="PATH=/home/ubuntu/maxdev/mockercount/venv/bin"
 ExecStart=/home/ubuntu/maxdev/mockercount/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:8000 app:app
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=5
 Restart=always
 
 [Install]

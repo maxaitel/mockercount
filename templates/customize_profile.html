@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customize Profile - {{ user.name|capitalize_name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 min-h-screen text-white p-8">
+    <div class="max-w-4xl mx-auto">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold mb-2">Customize Your Profile</h1>
+            <p class="text-xl text-blue-400">Level {{ badge_info.level }} {{ badge_info.title }}</p>
+            <div class="text-6xl my-4">{{ badge_info.emoji }}</div>
+        </div>
+
+        <form method="POST" class="space-y-8">
+            <!-- Status Message (Level 3+) -->
+            <div class="bg-gray-800 rounded-lg p-6 relative overflow-hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Status Message</h2>
+                    <div class="text-sm text-gray-400">
+                        {% if benefits.can_set_status %}
+                            Available at your level
+                        {% else %}
+                            Unlocks at Level 3
+                        {% endif %}
+                    </div>
+                </div>
+                <input type="text" name="status_message" 
+                       placeholder="Set your status message..." 
+                       value="{{ user.status_message or '' }}"
+                       class="w-full bg-gray-700 rounded px-4 py-2 {% if not benefits.can_set_status %}opacity-50 cursor-not-allowed{% endif %}"
+                       {% if not benefits.can_set_status %}disabled{% endif %}>
+                {% if not benefits.can_set_status %}
+                    <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                        <div class="text-center">
+                            <span class="text-2xl">🔒</span>
+                            <p class="text-sm text-gray-400">Reach Level 3 to unlock</p>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Card Customization (Level 5+) -->
+            <div class="bg-gray-800 rounded-lg p-6 relative overflow-hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Card Style</h2>
+                    <div class="text-sm text-gray-400">
+                        {% if benefits.can_customize_card %}
+                            Available at your level
+                        {% else %}
+                            Unlocks at Level 5
+                        {% endif %}
+                    </div>
+                </div>
+                <select name="color_scheme" 
+                        class="w-full bg-gray-700 rounded px-4 py-2 {% if not benefits.can_customize_card %}opacity-50 cursor-not-allowed{% endif %}"
+                        {% if not benefits.can_customize_card %}disabled{% endif %}>
+                    <option value="">Default</option>
+                    <option value="emerald" {% if user.custom_color_scheme == 'emerald' %}selected{% endif %}>Emerald</option>
+                    <option value="sapphire" {% if user.custom_color_scheme == 'sapphire' %}selected{% endif %}>Sapphire</option>
+                    <option value="ruby" {% if user.custom_color_scheme == 'ruby' %}selected{% endif %}>Ruby</option>
+                    <option value="gold" {% if user.custom_color_scheme == 'gold' %}selected{% endif %}>Gold</option>
+                </select>
+                {% if not benefits.can_customize_card %}
+                    <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                        <div class="text-center">
+                            <span class="text-2xl">🔒</span>
+                            <p class="text-sm text-gray-400">Reach Level 5 to unlock</p>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Theme Customization (Level 7+) -->
+            <div class="bg-gray-800 rounded-lg p-6 relative overflow-hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Profile Theme</h2>
+                    <div class="text-sm text-gray-400">
+                        {% if benefits.can_set_theme %}
+                            Available at your level
+                        {% else %}
+                            Unlocks at Level 7
+                        {% endif %}
+                    </div>
+                </div>
+                <select name="theme" 
+                        class="w-full bg-gray-700 rounded px-4 py-2 {% if not benefits.can_set_theme %}opacity-50 cursor-not-allowed{% endif %}"
+                        {% if not benefits.can_set_theme %}disabled{% endif %}>
+                    <option value="">Default</option>
+                    <option value="neon" {% if user.theme == 'neon' %}selected{% endif %}>Neon</option>
+                    <option value="minimal" {% if user.theme == 'minimal' %}selected{% endif %}>Minimal</option>
+                    <option value="retro" {% if user.theme == 'retro' %}selected{% endif %}>Retro</option>
+                    <option value="cosmic" {% if user.theme == 'cosmic' %}selected{% endif %}>Cosmic</option>
+                </select>
+                {% if not benefits.can_set_theme %}
+                    <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                        <div class="text-center">
+                            <span class="text-2xl">🔒</span>
+                            <p class="text-sm text-gray-400">Reach Level 7 to unlock</p>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Pin Achievements (Level 6+) -->
+            {% if user.unlocked_achievements %}
+            <div class="bg-gray-800 rounded-lg p-6 relative overflow-hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Pinned Achievements</h2>
+                    <div class="text-sm text-gray-400">
+                        {% if benefits.can_pin_achievements %}
+                            Available at your level
+                        {% else %}
+                            Unlocks at Level 6
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {% for achievement in user.unlocked_achievements %}
+                    <label class="flex items-center space-x-3 p-3 bg-gray-700 rounded-lg cursor-pointer
+                                 {% if not benefits.can_pin_achievements %}opacity-50{% endif %}">
+                        <input type="checkbox" name="pinned_achievements" 
+                               value="{{ achievement.id }}"
+                               {% if achievement.id in (user.pinned_achievements or []) %}checked{% endif %}
+                               {% if not benefits.can_pin_achievements %}disabled{% endif %}
+                               class="form-checkbox h-5 w-5 text-blue-600">
+                        <span class="text-2xl">{{ achievement.emoji }}</span>
+                        <span class="flex-1">{{ achievement.title }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                {% if not benefits.can_pin_achievements %}
+                    <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                        <div class="text-center">
+                            <span class="text-2xl">🔒</span>
+                            <p class="text-sm text-gray-400">Reach Level 6 to unlock</p>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Legendary Status (Level 10) -->
+            <div class="bg-gray-800 rounded-lg p-6 relative overflow-hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Legendary Status</h2>
+                    <div class="text-sm text-gray-400">
+                        {% if benefits.is_legendary %}
+                            Unlocked! ⚡
+                        {% else %}
+                            Unlocks at Level 10
+                        {% endif %}
+                    </div>
+                </div>
+                <p class="text-gray-400">
+                    {% if benefits.is_legendary %}
+                        You have achieved legendary status! Your name will appear with special effects across the site.
+                    {% else %}
+                        Reach the highest level to unlock legendary status and special visual effects!
+                    {% endif %}
+                </p>
+                {% if not benefits.is_legendary %}
+                    <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                        <div class="text-center">
+                            <span class="text-2xl">🔒</span>
+                            <p class="text-sm text-gray-400">Reach Level 10 to unlock</p>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="flex justify-between items-center">
+                <a href="{{ url_for('user_history', user_id=user.id) }}" 
+                   class="text-gray-400 hover:text-white transition-colors">
+                    ← Back to Profile
+                </a>
+                <button type="submit" 
+                        class="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</body>
+</html> 

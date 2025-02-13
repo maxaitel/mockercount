@@ -20,6 +20,7 @@
         .coffee-card {
             transition: all 0.3s ease;
             position: relative;
+            cursor: pointer;
         }
         .coffee-card:hover {
             transform: translateY(-5px) rotate(2deg);
@@ -222,6 +223,54 @@
             margin-top: 0.25rem;
             letter-spacing: 0.025em;
         }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            overflow: auto;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .modal.show {
+            opacity: 1;
+        }
+        .modal-content {
+            margin: auto;
+            display: block;
+            max-width: 90%;
+            max-height: 90vh;
+            margin-top: 2vh;
+        }
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .modal-close:hover {
+            color: #bbb;
+        }
+        .modal-date {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: #f1f1f1;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen">
@@ -242,14 +291,54 @@
                         <p class="text-4xl font-bold text-gray-200">{{ user.coffee_count }}</p>
                         <p class="text-sm text-gray-400">Total Coffees</p>
                     </div>
-                    {% if stats and stats.current_streak >= 0 %}
-                    <div class="streak-counter streak-{{ badge_info.streak_info.level }} mt-8">
-                        <div class="streak-emoji">{{ badge_info.streak_info.emoji }}</div>
-                        <div class="text-4xl font-bold text-white mb-2">{{ stats.current_streak }} Day Streak!</div>
-                        <div class="streak-message">{{ badge_info.streak_info.message }}</div>
+                    
+                    <!-- Level Progress -->
+                    <div class="flex-1 max-w-sm">
+                        {% set next_level_threshold = 10 if user.coffee_count < 10 else
+                                                   20 if user.coffee_count < 20 else
+                                                   30 if user.coffee_count < 30 else
+                                                   50 if user.coffee_count < 50 else
+                                                   75 if user.coffee_count < 75 else
+                                                   100 if user.coffee_count < 100 else
+                                                   250 if user.coffee_count < 250 else
+                                                   500 if user.coffee_count < 500 else
+                                                   1000 if user.coffee_count < 1000 else
+                                                   None %}
+                        {% set current_level_threshold = 0 if user.coffee_count < 10 else
+                                                      10 if user.coffee_count < 20 else
+                                                      20 if user.coffee_count < 30 else
+                                                      30 if user.coffee_count < 50 else
+                                                      50 if user.coffee_count < 75 else
+                                                      75 if user.coffee_count < 100 else
+                                                      100 if user.coffee_count < 250 else
+                                                      250 if user.coffee_count < 500 else
+                                                      500 if user.coffee_count < 1000 else
+                                                      1000 %}
+                        {% if next_level_threshold %}
+                            {% set progress = ((user.coffee_count - current_level_threshold) / (next_level_threshold - current_level_threshold) * 100)|round|int %}
+                            <div class="text-sm text-gray-400 mb-1">Progress to Level {{ badge_info.level + 1 }}</div>
+                            <div class="relative h-4 bg-gray-700 rounded-full overflow-hidden">
+                                <div class="absolute inset-0 bg-gradient-to-r from-blue-500 to-blue-600"
+                                     style="width: {{ progress }}%">
+                                </div>
+                            </div>
+                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>{{ user.coffee_count - current_level_threshold }}</span>
+                                <span>{{ next_level_threshold - current_level_threshold }} needed</span>
+                            </div>
+                        {% else %}
+                            <div class="text-sm text-gray-400">Maximum Level Achieved! 🎉</div>
+                        {% endif %}
                     </div>
-                    {% endif %}
                 </div>
+
+                {% if stats and stats.current_streak >= 0 %}
+                <div class="streak-counter streak-{{ badge_info.streak_info.level }} mt-8">
+                    <div class="streak-emoji">{{ badge_info.streak_info.emoji }}</div>
+                    <div class="text-4xl font-bold text-white mb-2">{{ stats.current_streak }} Day Streak!</div>
+                    <div class="streak-message">{{ badge_info.streak_info.message }}</div>
+                </div>
+                {% endif %}
 
                 {% if badge_info %}
                 <div class="mt-6 pt-6 border-t border-gray-700">
@@ -258,9 +347,35 @@
                         <h3 class="text-2xl font-bold text-white mb-1">Level {{ badge_info.level }} {{ badge_info.title }}</h3>
                         <p class="text-gray-400 text-sm italic mb-4">"{{ badge_info.description }}"</p>
                         
+                        <!-- Status Message -->
+                        {% if user.status_message %}
+                        <p class="text-blue-400 text-sm mb-4">{{ user.status_message }}</p>
+                        {% endif %}
+                        
+                        <div class="flex justify-center gap-4">
+                            <a href="{{ url_for('user_card', user_id=user.id) }}" 
+                               class="inline-block bg-gradient-to-r from-blue-600 to-blue-700 text-white py-2 px-4 rounded-lg
+                                      hover:from-blue-700 hover:to-blue-800 
+                                      transform hover:scale-[1.02] transition-all duration-200
+                                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900
+                                      shadow-lg shadow-blue-500/20">
+                                🎴 Get Trading Card
+                            </a>
+                        </div>
+                        
                         {% if badge_info.achievements %}
                         <div class="grid grid-cols-1 gap-2 mb-4">
-                            {% for achievement in badge_info.achievements %}
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="text-lg font-semibold text-white">Achievements</h3>
+                                <a href="{{ url_for('user_achievements', user_id=user.id) }}" 
+                                   class="text-sm text-blue-400 hover:text-blue-300 flex items-center">
+                                    View All
+                                    <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </a>
+                            </div>
+                            {% for achievement in badge_info.achievements[:3] %}
                             <div class="bg-gray-900 bg-opacity-50 rounded p-2 flex items-center">
                                 <span class="text-2xl mr-2">{{ achievement.emoji }}</span>
                                 <div class="text-left">
@@ -269,17 +384,13 @@
                                 </div>
                             </div>
                             {% endfor %}
+                            {% if badge_info.achievements|length > 3 %}
+                            <div class="text-center text-sm text-gray-400">
+                                + {{ badge_info.achievements|length - 3 }} more achievements
+                            </div>
+                            {% endif %}
                         </div>
                         {% endif %}
-                        
-                        <a href="{{ url_for('user_card', user_id=user.id) }}" 
-                           class="inline-block bg-gradient-to-r from-blue-600 to-blue-700 text-white py-2 px-4 rounded-lg
-                                  hover:from-blue-700 hover:to-blue-800 
-                                  transform hover:scale-[1.02] transition-all duration-200
-                                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900
-                                  shadow-lg shadow-blue-500/20">
-                            🎴 Get Trading Card
-                        </a>
                     </div>
                 </div>
                 {% endif %}
@@ -336,7 +447,7 @@
             <div class="coffee-grid mt-12">
                 {% for photo in user.photos %}
                 <div class="gradient-border">
-                    <div class="coffee-card">
+                    <div class="coffee-card" onclick="openModal('{{ url_for('static', filename=photo.photo_path) }}', '{{ photo.timestamp.strftime('%B %d, %Y at %I:%M %p') }}')">
                         <img src="{{ url_for('static', filename=photo.photo_path) }}" 
                              alt="Coffee photo" 
                              class="w-full h-64 object-cover">
@@ -356,5 +467,50 @@
             {% endif %}
         </div>
     </div>
+
+    <!-- Image Modal -->
+    <div id="imageModal" class="modal" onclick="closeModal()">
+        <span class="modal-close">&times;</span>
+        <img id="modalImage" class="modal-content">
+        <div id="modalDate" class="modal-date"></div>
+    </div>
+
+    <script>
+        function openModal(imageSrc, date) {
+            const modal = document.getElementById('imageModal');
+            const modalImg = document.getElementById('modalImage');
+            const modalDate = document.getElementById('modalDate');
+            
+            modalImg.src = imageSrc;
+            modalDate.textContent = date;
+            modal.style.display = "block";
+            setTimeout(() => modal.classList.add('show'), 10);
+            
+            // Prevent scrolling of the background
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('imageModal');
+            modal.classList.remove('show');
+            setTimeout(() => {
+                modal.style.display = "none";
+                // Re-enable scrolling
+                document.body.style.overflow = 'auto';
+            }, 300);
+        }
+
+        // Close modal when pressing escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        // Only close if clicking outside the image
+        document.getElementById('modalImage').onclick = function(event) {
+            event.stopPropagation();
+        };
+    </script>
 </body>
 </html> 

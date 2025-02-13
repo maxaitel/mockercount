@@ -255,7 +255,7 @@
                 <span class="mr-2">Log Your Coffee</span>
                 <span class="sparkle">📸</span>
             </h2>
-            <form action="{{ url_for('submit') }}" method="post" enctype="multipart/form-data" class="space-y-6">
+            <form action="{{ url_for('submit') }}" method="post" enctype="multipart/form-data" class="space-y-6" id="submitForm">
                 <div>
                     <label for="name" class="block text-sm font-medium text-gray-300 mb-2">
                         Your Name 
@@ -276,27 +276,47 @@
                     </div>
                 </div>
                 <div>
-                    <label for="photo" class="block text-sm font-medium text-gray-300 mb-2">Coffee Photo</label>
-                    <div class="fancy-file-input">
-                        <input type="file" name="photo" id="photo" 
-                               accept="image/png,image/jpeg,image/heic,image/heif,image/webp" required
-                               class="w-full text-sm text-gray-400
-                                      file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0
-                                      file:text-sm file:font-semibold file:bg-blue-600 file:text-white
-                                      hover:file:bg-blue-700">
+                    <label for="camera-stream" class="block text-sm font-medium text-gray-300 mb-2">Take a Coffee Photo</label>
+                    <div id="camera-container" class="fancy-file-input">
+                        <!-- Initial state -->
+                        <div id="start-camera-container" class="text-center py-4">
+                            <button type="button" id="start-camera-btn" 
+                                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4">
+                                Start Camera 📸
+                            </button>
+                            <p class="text-sm text-gray-400">We'll ask for camera permission when you click</p>
+                        </div>
+
+                        <!-- Camera view (hidden initially) -->
+                        <div id="camera-view" class="hidden">
+                            <video id="camera-stream" autoplay playsinline class="w-full rounded-lg mb-2" style="max-height:300px; background:#000;"></video>
+                            <button type="button" id="capture-btn" 
+                                    class="block mx-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                Capture Photo
+                            </button>
+                        </div>
+
+                        <!-- Fallback file upload (hidden initially) -->
+                        <div id="fallback-upload" class="hidden text-center py-4">
+                            <p class="text-yellow-400 mb-4">Camera access denied. Please upload a photo instead:</p>
+                            <input type="file" name="photo" id="photo-upload" 
+                                   accept="image/*"
+                                   class="w-full text-sm text-gray-400
+                                          file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0
+                                          file:text-sm file:font-semibold file:bg-blue-600 file:text-white
+                                          hover:file:bg-blue-700">
+                        </div>
+
+                        <input type="hidden" name="photo" id="photo-data">
                         <p class="mt-2 text-sm text-gray-400">
                             <span class="font-semibold">📸 Requirements:</span><br>
-                            • Supported formats: PNG, JPG, HEIC (iPhone), WEBP (Android)<br>
+                            • Take a photo using your device's camera<br>
                             • Maximum size: 50MB
                         </p>
                     </div>
                 </div>
                 <button type="submit"
-                        class="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-lg
-                               hover:from-blue-700 hover:to-blue-800 
-                               transform hover:scale-[1.02] transition-all duration-200
-                               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900
-                               shadow-lg shadow-blue-500/20">
+                        class="block mx-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     Add Coffee ☕
                 </button>
             </form>
@@ -348,11 +368,13 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 {% if entry.photos %}
-                                <img src="{{ url_for('static', filename=entry.photos[0].photo_path) }}" 
-                                     alt="Coffee photo" 
-                                     class="h-16 w-16 object-cover rounded-md transform hover:scale-150 transition-transform duration-200">
+                                <a href="{{ url_for('user_history', user_id=entry.id) }}">
+                                    <img src="{{ url_for('static', filename=entry.photos[0].photo_path) }}" 
+                                         alt="Latest coffee photo" 
+                                         class="h-16 w-16 object-cover rounded-md hover:opacity-75 transition-opacity">
+                                </a>
                                 {% else %}
-                                <span class="text-sm text-gray-500">No photo</span>
+                                <span class="text-gray-500">No photo</span>
                                 {% endif %}
                             </td>
                         </tr>
@@ -386,9 +408,11 @@
                             {{ capitalize_name(entry.name) }}
                         </a>
                         {% if entry.photos %}
-                        <img src="{{ url_for('static', filename=entry.photos[0].photo_path) }}" 
-                             alt="Coffee photo" 
-                             class="w-full h-48 object-cover rounded-lg">
+                        <a href="{{ url_for('user_history', user_id=entry.id) }}">
+                            <img src="{{ url_for('static', filename=entry.photos[0].photo_path) }}" 
+                                 alt="Coffee photo" 
+                                 class="w-full h-48 object-cover rounded-lg hover:opacity-75 transition-opacity">
+                        </a>
                         {% else %}
                         <span class="text-sm text-gray-500">No photo</span>
                         {% endif %}
@@ -399,9 +423,34 @@
         </div>
     </div>
 
+    <!-- Level Up Modal -->
+    <div id="levelUpModal" class="fixed inset-0 bg-black bg-opacity-75 hidden items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-xl p-8 max-w-md w-full mx-4 transform transition-all duration-500 scale-0">
+            <div class="text-center">
+                <div class="text-6xl mb-4 animate-bounce">{{ session.get('level_up', {}).get('emoji', '⭐') }}</div>
+                <h2 class="text-3xl font-bold text-white mb-2">Level Up!</h2>
+                <p class="text-xl text-blue-400 mb-4">
+                    Level {{ session.get('level_up', {}).get('old_level', 1) }} → 
+                    Level {{ session.get('level_up', {}).get('new_level', 2) }}
+                </p>
+                <div class="text-2xl font-semibold text-white mb-2">
+                    {{ session.get('level_up', {}).get('title', '') }}
+                </div>
+                <p class="text-gray-300 italic mb-6">
+                    "{{ session.get('level_up', {}).get('description', '') }}"
+                </p>
+                <button onclick="closeLevelUpModal()" 
+                        class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                    Continue
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Handle name input - convert to title case as user types
         const nameInput = document.getElementById('name');
+        const submitForm = document.getElementById('submitForm');
         
         nameInput.addEventListener('input', function(e) {
             // Convert to title case (capitalize first letter of each word)
@@ -432,6 +481,147 @@
         for (let i = 0; i < 10; i++) {
             createCoffeeBean();
         }
+
+        // Camera capture code start
+        const startCameraBtn = document.getElementById('start-camera-btn');
+        const startCameraContainer = document.getElementById('start-camera-container');
+        const cameraView = document.getElementById('camera-view');
+        const fallbackUpload = document.getElementById('fallback-upload');
+        const video = document.getElementById('camera-stream');
+        const captureButton = document.getElementById('capture-btn');
+        const photoDataInput = document.getElementById('photo-data');
+        const photoUpload = document.getElementById('photo-upload');
+        
+        // Start camera button click handler
+        startCameraBtn.addEventListener('click', function() {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+                    .then(function(stream) {
+                        video.srcObject = stream;
+                        video.play();
+                        // Show camera view, hide other elements
+                        startCameraContainer.classList.add('hidden');
+                        cameraView.classList.remove('hidden');
+                        fallbackUpload.classList.add('hidden');
+                    })
+                    .catch(function(error) {
+                        console.error('Error accessing the camera: ', error);
+                        // Show fallback upload if camera access denied
+                        startCameraContainer.classList.add('hidden');
+                        cameraView.classList.add('hidden');
+                        fallbackUpload.classList.remove('hidden');
+                    });
+            } else {
+                // Show fallback if getUserMedia not supported
+                startCameraContainer.classList.add('hidden');
+                cameraView.classList.add('hidden');
+                fallbackUpload.classList.remove('hidden');
+            }
+        });
+        
+        // Capture button click handler
+        captureButton.addEventListener('click', function() {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            photoDataInput.value = imageDataUrl;
+            
+            // Visual feedback that photo was captured
+            captureButton.textContent = '✓ Photo Captured!';
+            captureButton.classList.add('bg-green-600', 'hover:bg-green-700');
+            captureButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+        });
+
+        // File upload handler
+        photoUpload.addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0]) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    photoDataInput.value = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Form submission handler
+        submitForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Get the base64 data from the hidden input
+            const base64Data = photoDataInput.value;
+            
+            // If we have base64 data from camera or file reader
+            if (base64Data && base64Data.startsWith('data:image')) {
+                // Convert base64 to blob
+                fetch(base64Data)
+                    .then(res => res.blob())
+                    .then(blob => {
+                        // Create a File object
+                        const file = new File([blob], 'camera_photo.jpg', { type: 'image/jpeg' });
+                        
+                        // Create a new FormData object
+                        const formData = new FormData();
+                        formData.append('name', nameInput.value);
+                        formData.append('photo', file);
+                        
+                        // Submit the form data via fetch
+                        fetch(submitForm.action, {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => {
+                            if (response.redirected) {
+                                window.location.href = response.url;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('Error uploading photo. Please try again.');
+                        });
+                    });
+            } else if (photoUpload.files && photoUpload.files[0]) {
+                // If we have a file from the file input, submit the form normally
+                this.submit();
+            } else {
+                alert('Please capture a photo or select a file to upload.');
+            }
+        });
+        // Camera capture code end
+
+        // Level Up Modal
+        function showLevelUpModal() {
+            const modal = document.getElementById('levelUpModal');
+            const modalContent = modal.querySelector('.bg-gray-800');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            // Trigger animation
+            setTimeout(() => {
+                modalContent.classList.remove('scale-0');
+                modalContent.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeLevelUpModal() {
+            const modal = document.getElementById('levelUpModal');
+            const modalContent = modal.querySelector('.bg-gray-800');
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-0');
+            setTimeout(() => {
+                modal.classList.remove('flex');
+                modal.classList.add('hidden');
+                // Clear the level up from session
+                fetch('/clear_level_up', { method: 'POST' });
+            }, 300);
+        }
+
+        // Check for level up on page load
+        {% if session.get('level_up') %}
+            showLevelUpModal();
+        {% endif %}
     </script>
 </body>
 </html> 

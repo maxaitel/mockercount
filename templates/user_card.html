@@ -177,6 +177,24 @@
             border-radius: 8px;
             padding: 0.5rem;
             margin-bottom: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .achievements-section::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                45deg,
+                transparent 0%,
+                rgba(255, 255, 255, 0.05) 50%,
+                transparent 100%
+            );
+            pointer-events: none;
         }
 
         .achievements-grid {
@@ -194,11 +212,55 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
             font-size: 0.7rem;
             line-height: 1;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .achievement-badge:hover {
+            transform: translateY(-1px);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .achievement-badge::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                45deg,
+                transparent 0%,
+                rgba(255, 255, 255, 0.05) 50%,
+                transparent 100%
+            );
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+        }
+
+        .achievement-badge:hover::before {
+            transform: translateX(100%);
         }
 
         .achievement-badge .emoji {
             font-size: 1rem;
             margin-right: 0.25rem;
+            filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.3));
+        }
+
+        .achievement-badge .title {
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 500;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .more-achievements {
+            grid-column: span 2;
+            justify-content: center;
+            background: rgba(59, 130, 246, 0.1);
+            border-color: rgba(59, 130, 246, 0.3);
         }
 
         .card-inner {
@@ -440,10 +502,6 @@
                         <div class="grid grid-cols-2 gap-1 text-sm">
                             <div class="text-gray-300">Total Coffees:</div>
                             <div class="text-right text-white font-semibold">{{ user.coffee_count }}</div>
-                            {% if stats.avg_per_day %}
-                            <div class="text-gray-300">Daily Avg:</div>
-                            <div class="text-right text-white font-semibold">{{ stats.avg_per_day }}</div>
-                            {% endif %}
                             {% if stats.current_streak %}
                             <div class="text-gray-300">Current Streak:</div>
                             <div class="text-right text-white font-semibold">{{ stats.current_streak }} days</div>
@@ -460,12 +518,18 @@
                     {% if badge_info.achievements %}
                     <div class="achievements-section mb-2">
                         <div class="achievements-grid">
-                            {% for achievement in badge_info.achievements %}
-                            <div class="achievement-badge">
+                            {% set random_achievements = (badge_info.achievements|random(2) if badge_info.achievements|length >= 2 else badge_info.achievements) %}
+                            {% for achievement in random_achievements %}
+                            <div class="achievement-badge" title="{{ achievement.description }}">
                                 <span class="emoji">{{ achievement.emoji }}</span>
-                                <span class="text-gray-300">{{ achievement.title }}</span>
+                                <span class="title">{{ achievement.title }}</span>
                             </div>
                             {% endfor %}
+                            {% if badge_info.achievements|length > 2 %}
+                            <div class="achievement-badge more-achievements">
+                                <span class="title">+{{ badge_info.achievements|length - 2 }} more achievements</span>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                     {% endif %}
@@ -508,9 +572,9 @@
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             
-            // Set canvas size (4x for high resolution)
-            const width = 63 * 4;  // 63mm
-            const height = 88 * 4; // 88mm
+            // Set canvas size (8x for high resolution)
+            const width = 63 * 8;  // 63mm
+            const height = 88 * 8; // 88mm
             canvas.width = width;
             canvas.height = height;
             
@@ -521,12 +585,7 @@
             // Draw border
             const borderWidth = width * 0.02;
             const colorScheme = document.getElementById('cardElement').dataset.colorScheme;
-            const borderColor = {
-                'bronze': '#CD7F32',
-                'gold': '#FFD700',
-                'silver': '#C0C0C0',
-                'copper': '#B87333'
-            }[colorScheme] || '#CD7F32';
+            const borderColor = getBorderColor(colorScheme);
             ctx.strokeStyle = borderColor;
             ctx.lineWidth = borderWidth;
             ctx.strokeRect(borderWidth/2, borderWidth/2, width - borderWidth, height - borderWidth);
@@ -575,22 +634,26 @@
             ctx.font = `italic ${width * 0.035}px "Space Grotesk"`;
             ctx.fillText('"{{ badge_info.description }}"', width/2, height * 0.6);
             
-            // Draw achievements
-            {% if badge_info.achievements %}
-            const achievementBoxY = height * 0.7;
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';  // Darker background for better contrast
-            roundRect(ctx, width * 0.1, achievementBoxY, width * 0.8, height * 0.15, 10);
-            ctx.fill();
-            
-            ctx.font = `${width * 0.04}px "Space Grotesk"`;
-            ctx.textAlign = 'left';
-            ctx.fillStyle = '#FFFFFF';  // Bright white for achievements
-            {% for achievement in badge_info.achievements %}
-            ctx.fillText('{{ achievement.emoji }} {{ achievement.title }}', 
-                width * 0.15, 
-                achievementBoxY + height * {{ 0.04 + loop.index0 * 0.06 }});
-            {% endfor %}
-            {% endif %}
+            // Draw achievements section
+            const achievements = {{ badge_info.achievements|tojson|safe }};
+            if (achievements && achievements.length > 0) {
+                const achievementBoxY = height * 0.7;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                roundRect(ctx, width * 0.1, achievementBoxY, width * 0.8, height * 0.15, 10);
+                ctx.fill();
+                
+                ctx.font = `${width * 0.04}px "Space Grotesk"`;
+                ctx.textAlign = 'left';
+                ctx.fillStyle = '#FFFFFF';
+                
+                achievements.slice(0, 3).forEach((achievement, index) => {
+                    ctx.fillText(
+                        `${achievement.emoji} ${achievement.title}`,
+                        width * 0.15,
+                        achievementBoxY + height * (0.04 + index * 0.06)
+                    );
+                });
+            }
             
             // Draw footer
             ctx.fillStyle = '#6B7280';  // Darker gray for footer
@@ -602,7 +665,7 @@
             // Convert to PNG and download
             const image = canvas.toDataURL('image/png', 1.0);
             const link = document.createElement('a');
-            link.download = '{{ user.name|capitalize_name }}_coffee_card.png';
+            link.download = '{{ user.name|capitalize_name }}_coffee_card_hd.png';
             link.href = image;
             link.click();
         }

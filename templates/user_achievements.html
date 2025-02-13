@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ user.name|capitalize_name }}'s Achievements</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: #111827;
+            min-height: 100vh;
+        }
+        
+        .achievement {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .achievement:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        }
+        
+        .achievement::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                45deg,
+                transparent 0%,
+                rgba(255, 255, 255, 0.05) 50%,
+                transparent 100%
+            );
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+        }
+        
+        .achievement:hover::before {
+            transform: translateX(100%);
+        }
+        
+        .achievement-type {
+            position: relative;
+            overflow: hidden;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border-radius: 0.75rem;
+            background: rgba(31, 41, 55, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .achievement-type::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+                45deg,
+                transparent 0%,
+                rgba(255, 255, 255, 0.03) 50%,
+                transparent 100%
+            );
+        }
+        
+        .achievement-type h2 {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+        }
+        
+        .achievement-type h2::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(
+                to right,
+                transparent 0%,
+                rgba(59, 130, 246, 0.5) 50%,
+                transparent 100%
+            );
+        }
+        
+        .achievement-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+        
+        .achievement-card {
+            position: relative;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            background: rgba(17, 24, 39, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .achievement-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+        
+        .achievement-emoji {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            display: inline-block;
+            filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.2));
+        }
+        
+        .achievement-date {
+            font-size: 0.75rem;
+            color: #9CA3AF;
+            margin-top: 0.5rem;
+        }
+        
+        .back-button {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 1rem;
+            border-radius: 9999px;
+            background: rgba(59, 130, 246, 0.9);
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+        
+        .back-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+            background: rgba(59, 130, 246, 1);
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="text-white p-8">
+    <div class="max-w-7xl mx-auto">
+        <div class="text-center mb-12">
+            <h1 class="text-5xl font-bold mb-4 floating">{{ user.name|capitalize_name }}'s Achievements</h1>
+            <p class="text-xl text-blue-400">Level {{ badge_info.level }} {{ badge_info.title }}</p>
+            <div class="text-6xl my-4">{{ badge_info.emoji }}</div>
+            <p class="text-gray-400 text-lg max-w-2xl mx-auto">{{ badge_info.description }}</p>
+        </div>
+
+        {% for type, achievements in achievements_by_type.items() %}
+        <div class="achievement-type">
+            <h2 class="text-2xl font-bold text-blue-400 mb-4">
+                {% if type == 'streak' %}🔥 Streak Achievements
+                {% elif type == 'volume' %}☕ Volume Achievements
+                {% elif type == 'consistency' %}📊 Consistency Achievements
+                {% elif type == 'veteran' %}🏆 Veteran Achievements
+                {% else %}🌟 Special Achievements
+                {% endif %}
+            </h2>
+            <div class="achievement-grid">
+                {% for achievement in achievements %}
+                <div class="achievement-card">
+                    <div class="achievement-emoji">{{ achievement.emoji }}</div>
+                    <h3 class="text-lg font-semibold text-white mb-1">{{ achievement.title }}</h3>
+                    <p class="text-gray-400">{{ achievement.description }}</p>
+                    <div class="achievement-date">
+                        Unlocked on {{ achievement.unlocked_at.strftime('%B %d, %Y') }}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <a href="{{ url_for('user_history', user_id=user.id) }}" class="back-button">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+        </svg>
+    </a>
+</body>
+</html> 
