@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% macro capitalize_name(name) %}
+        {% set words = name.split() %}
+        {% for word in words %}
+            {{ word[0]|upper }}{{ word[1:] }}{% if not loop.last %} {% endif %}
+        {% endfor %}
+    {% endmacro %}
+    <title>{{ user.name|capitalize_name }}'s Coffee Journey</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .coffee-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+        .coffee-card {
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .coffee-card:hover {
+            transform: translateY(-5px) rotate(2deg);
+        }
+        .coffee-card::before {
+            content: "☕";
+            position: absolute;
+            top: -15px;
+            right: -15px;
+            font-size: 2rem;
+            opacity: 0;
+            transition: all 0.3s ease;
+            transform: rotate(-45deg);
+        }
+        .coffee-card:hover::before {
+            opacity: 1;
+            transform: rotate(0deg);
+        }
+        .gradient-border {
+            position: relative;
+            border-radius: 0.5rem;
+            background: linear-gradient(45deg, #c59d5f, #8b4513);
+            padding: 3px;
+        }
+        .gradient-border > div {
+            background: #1f2937;
+            border-radius: 0.3rem;
+        }
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+            100% {
+                transform: translateY(0px);
+            }
+        }
+        .coffee-stats {
+            position: relative;
+            overflow: hidden;
+        }
+        .coffee-stats::after {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                45deg,
+                transparent 0%,
+                rgba(255, 255, 255, 0.1) 50%,
+                transparent 100%
+            );
+            animation: shine 3s infinite;
+        }
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+        .achievement {
+            position: relative;
+            overflow: hidden;
+        }
+        .achievement::before {
+            content: "🌟";
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            font-size: 1.5rem;
+            animation: spin 4s linear infinite;
+        }
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+        .rank-badge {
+            font-size: 3rem;
+            margin: 1rem 0;
+            position: relative;
+            display: inline-block;
+            cursor: help;
+            animation: float 3s ease-in-out infinite;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        .rank-badge::after {
+            content: attr(data-title);
+            position: absolute;
+            bottom: -2.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.875rem;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        .rank-badge:hover::after {
+            opacity: 1;
+        }
+        .rank-description {
+            color: #a8b3cf;
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 1rem auto;
+            line-height: 1.6;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .legendary {
+            animation: legendary 2s infinite;
+        }
+        @keyframes legendary {
+            0%, 100% { filter: drop-shadow(0 0 10px #ffd700); }
+            50% { filter: drop-shadow(0 0 20px #ffd700); }
+        }
+        .mythical {
+            animation: mythical 3s infinite;
+        }
+        @keyframes mythical {
+            0% { filter: drop-shadow(0 0 10px #ff0000); }
+            33% { filter: drop-shadow(0 0 10px #00ff00); }
+            66% { filter: drop-shadow(0 0 10px #0000ff); }
+            100% { filter: drop-shadow(0 0 10px #ff0000); }
+        }
+        .divine {
+            animation: divine 4s infinite;
+            background: linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8f00ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            background-size: 200% auto;
+        }
+        @keyframes divine {
+            0% { background-position: 0% center; }
+            100% { background-position: 200% center; }
+        }
+        .streak-counter {
+            position: relative;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border-radius: 0.75rem;
+            background: linear-gradient(45deg, #1f2937, #111827);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .streak-none {
+            display: none;
+        }
+        
+        .streak-active {
+            animation: gentle-glow 3s infinite;
+        }
+        
+        .streak-awesome {
+            animation: gentle-glow 2.5s infinite;
+        }
+        
+        .streak-epic {
+            animation: gentle-glow 2s infinite;
+        }
+        
+        .streak-legendary {
+            animation: strong-glow 2s infinite;
+        }
+        
+        @keyframes gentle-glow {
+            0%, 100% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.2); }
+            50% { box-shadow: 0 0 25px rgba(239, 68, 68, 0.4); }
+        }
+        
+        @keyframes strong-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.3); }
+            50% { box-shadow: 0 0 35px rgba(239, 68, 68, 0.5); }
+        }
+        
+        .streak-emoji {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            display: inline-block;
+            opacity: 0.9;
+        }
+        
+        .streak-message {
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: #e5e7eb;
+            margin-top: 0.25rem;
+            letter-spacing: 0.025em;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <a href="{{ url_for('index') }}" class="inline-flex items-center mb-6 text-blue-400 hover:text-blue-300 transform hover:translate-x-2 transition-transform">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            Back to Leaderboard
+        </a>
+
+        <div class="text-center mb-12">
+            <h1 class="text-5xl font-bold mb-6 floating">{{ user.name|capitalize_name }}'s Coffee Journey</h1>
+            <div class="inline-block coffee-stats bg-gray-800 rounded-lg p-6 shadow-xl">
+                <p class="text-3xl text-blue-400 mb-4">Coffee Master Level</p>
+                <div class="flex items-center justify-center space-x-8">
+                    <div class="text-center">
+                        <p class="text-4xl font-bold text-gray-200">{{ user.coffee_count }}</p>
+                        <p class="text-sm text-gray-400">Total Coffees</p>
+                    </div>
+                    {% if stats and stats.current_streak >= 0 %}
+                    <div class="streak-counter streak-{{ badge_info.streak_info.level }} mt-8">
+                        <div class="streak-emoji">{{ badge_info.streak_info.emoji }}</div>
+                        <div class="text-4xl font-bold text-white mb-2">{{ stats.current_streak }} Day Streak!</div>
+                        <div class="streak-message">{{ badge_info.streak_info.message }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if badge_info %}
+                <div class="mt-6 pt-6 border-t border-gray-700">
+                    <div class="text-center">
+                        <div class="text-6xl mb-2">{{ badge_info.emoji }}</div>
+                        <h3 class="text-2xl font-bold text-white mb-1">Level {{ badge_info.level }} {{ badge_info.title }}</h3>
+                        <p class="text-gray-400 text-sm italic mb-4">"{{ badge_info.description }}"</p>
+                        
+                        {% if badge_info.achievements %}
+                        <div class="grid grid-cols-1 gap-2 mb-4">
+                            {% for achievement in badge_info.achievements %}
+                            <div class="bg-gray-900 bg-opacity-50 rounded p-2 flex items-center">
+                                <span class="text-2xl mr-2">{{ achievement.emoji }}</span>
+                                <div class="text-left">
+                                    <div class="font-semibold text-white">{{ achievement.title }}</div>
+                                    <div class="text-sm text-gray-400">{{ achievement.description }}</div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <a href="{{ url_for('user_card', user_id=user.id) }}" 
+                           class="inline-block bg-gradient-to-r from-blue-600 to-blue-700 text-white py-2 px-4 rounded-lg
+                                  hover:from-blue-700 hover:to-blue-800 
+                                  transform hover:scale-[1.02] transition-all duration-200
+                                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900
+                                  shadow-lg shadow-blue-500/20">
+                            🎴 Get Trading Card
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if stats %}
+            <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Coffee Milestones -->
+                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                    <h3 class="text-xl font-semibold text-blue-400 mb-4">☕ Coffee Journey</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <p class="text-gray-400">Started</p>
+                            <p class="text-lg">{{ stats.first_coffee.strftime('%B %d, %Y') }}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400">Days Active</p>
+                            <p class="text-lg">{{ stats.days_active }} days</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400">Average Daily Coffees</p>
+                            <p class="text-lg">{{ stats.avg_per_day }} per day</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Records -->
+                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                    <h3 class="text-xl font-semibold text-blue-400 mb-4">🏆 Personal Records</h3>
+                    <div class="space-y-4">
+                        {% if stats.most_in_day %}
+                        <div>
+                            <p class="text-gray-400">Most Coffees in One Day</p>
+                            <p class="text-lg">{{ stats.most_in_day.count }} on {{ stats.most_in_day.date.strftime('%B %d, %Y') }}</p>
+                        </div>
+                        {% endif %}
+                        {% if stats.longest_streak %}
+                        <div>
+                            <p class="text-gray-400">Longest Streak</p>
+                            <p class="text-lg">{{ stats.longest_streak.days }} days (ended {{ stats.longest_streak.end_date.strftime('%B %d, %Y') }})</p>
+                        </div>
+                        {% endif %}
+                        {% if stats.busiest_day %}
+                        <div>
+                            <p class="text-gray-400">Favorite Coffee Day</p>
+                            <p class="text-lg">{{ stats.busiest_day.day }}s ({{ stats.busiest_day.count }} total)</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="coffee-grid mt-12">
+                {% for photo in user.photos %}
+                <div class="gradient-border">
+                    <div class="coffee-card">
+                        <img src="{{ url_for('static', filename=photo.photo_path) }}" 
+                             alt="Coffee photo" 
+                             class="w-full h-64 object-cover">
+                        <div class="p-4">
+                            <p class="text-gray-300 font-medium">{{ photo.timestamp.strftime('%B %d, %Y') }}</p>
+                            <p class="text-sm text-gray-500">{{ photo.timestamp.strftime('%I:%M %p') }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% if not user.photos %}
+            <div class="text-center py-12">
+                <p class="text-xl text-gray-500 floating">Time to start your coffee journey! ☕</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html> 

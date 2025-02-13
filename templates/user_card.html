@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ user.name|capitalize_name }}'s Coffee Card</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <style>
+        @media print {
+            body { margin: 0; padding: 0; background: white; }
+            .card-container { 
+                margin: 20mm auto;
+                background: white;
+                box-shadow: none;
+            }
+            .no-print { display: none; }
+            .card-border { animation: none; }
+            .shine { display: none; }
+            .cut-lines { display: block !important; }
+            .cut-guide { display: block !important; }
+        }
+        
+        .card {
+            width: 63mm;  /* Standard trading card width */
+            height: 88mm; /* Standard trading card height */
+            position: relative;
+            overflow: hidden;
+            font-family: 'Space Grotesk', sans-serif;
+            transform-style: preserve-3d;
+            transform: perspective(1000px) rotateY(0deg);
+            transition: transform 0.5s ease;
+            background: #1f2937;
+            border-radius: 4.75% / 3.5%;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .card-container {
+            position: relative;
+            width: 83mm;  /* Card width + margins */
+            height: 108mm; /* Card height + margins */
+            padding: 10mm;
+            background: #374151;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .cut-guide {
+            display: none;
+            position: absolute;
+            inset: 0;
+            border: 1px dashed #000;
+            margin: 10mm;
+            pointer-events: none;
+        }
+        
+        .cut-lines {
+            display: none;
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+        
+        .corner {
+            position: absolute;
+            width: 10mm;
+            height: 10mm;
+        }
+        
+        .corner::before,
+        .corner::after {
+            content: '';
+            position: absolute;
+            background: #000;
+        }
+        
+        .corner::before {
+            width: 10mm;
+            height: 1mm;
+        }
+        
+        .corner::after {
+            width: 1mm;
+            height: 10mm;
+        }
+        
+        /* Corner positions */
+        .corner-tl { top: 5mm; left: 5mm; }
+        .corner-tr { top: 5mm; right: 5mm; transform: rotate(90deg); }
+        .corner-bl { bottom: 5mm; left: 5mm; transform: rotate(-90deg); }
+        .corner-br { bottom: 5mm; right: 5mm; transform: rotate(180deg); }
+        
+        .card-border {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+                var(--border-angle, 0deg),
+                var(--border-color-1),
+                var(--border-color-2),
+                var(--border-color-3),
+                var(--border-color-4)
+            );
+            border-radius: 4.75% / 3.5%;
+            animation: border-rotate 4s linear infinite;
+            mask: 
+                linear-gradient(#fff 0 0) content-box,
+                linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            -webkit-mask: 
+                linear-gradient(#fff 0 0) content-box,
+                linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            padding: 2px;
+        }
+        
+        @property --border-angle {
+            syntax: "<angle>";
+            inherits: false;
+            initial-value: 0deg;
+        }
+        
+        @keyframes border-rotate {
+            from { --border-angle: 0deg; }
+            to { --border-angle: 360deg; }
+        }
+        
+        .shine {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                125deg,
+                transparent 0%,
+                transparent 40%,
+                rgba(255, 255, 255, 0.1) 45%,
+                rgba(255, 255, 255, 0.2) 50%,
+                rgba(255, 255, 255, 0.1) 55%,
+                transparent 60%,
+                transparent 100%
+            );
+            animation: shine 3s infinite;
+            pointer-events: none;
+        }
+        
+        @keyframes shine {
+            from { transform: translateX(-100%) translateY(-100%); }
+            to { transform: translateX(100%) translateY(100%); }
+        }
+        
+        .photo-frame {
+            width: 45mm;
+            height: 30mm;
+            margin: 0 auto;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .photo-frame img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .stats-box {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .achievements-section {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .achievements-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
+
+        .achievement-badge {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.7rem;
+            line-height: 1;
+        }
+
+        .achievement-badge .emoji {
+            font-size: 1rem;
+            margin-right: 0.25rem;
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            background: #1f2937;
+            border-radius: 4.75% / 3.5%;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 0.5rem;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.3));
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer-text {
+            font-size: 0.625rem;
+            color: rgba(156, 163, 175, 0.8);
+            text-align: center;
+            letter-spacing: 0.02em;
+        }
+
+        /* Card background patterns based on level */
+        .card[data-color-scheme='rainbow'] .card-inner {
+            background: linear-gradient(45deg, 
+                rgba(255, 0, 0, 0.1),
+                rgba(255, 165, 0, 0.1),
+                rgba(255, 255, 0, 0.1),
+                rgba(0, 255, 0, 0.1),
+                rgba(0, 0, 255, 0.1),
+                rgba(75, 0, 130, 0.1),
+                rgba(143, 0, 255, 0.1)
+            );
+        }
+
+        .card[data-color-scheme='mythic'] .card-inner {
+            background: radial-gradient(circle at 50% 50%,
+                rgba(255, 215, 0, 0.15) 0%,
+                rgba(148, 0, 211, 0.15) 50%,
+                rgba(255, 105, 180, 0.15) 100%
+            );
+        }
+
+        .card[data-color-scheme='crystal'] .card-inner {
+            background: 
+                linear-gradient(135deg, transparent 0%, rgba(230, 230, 250, 0.1) 50%, transparent 100%),
+                linear-gradient(45deg, transparent 0%, rgba(135, 206, 235, 0.1) 50%, transparent 100%);
+        }
+
+        .card[data-color-scheme='gold'] .card-inner {
+            background: 
+                linear-gradient(45deg, transparent 0%, rgba(255, 215, 0, 0.1) 50%, transparent 100%),
+                radial-gradient(circle at 50% 50%, rgba(218, 165, 32, 0.15) 0%, transparent 100%);
+        }
+
+        .card[data-color-scheme='silver'] .card-inner {
+            background: 
+                linear-gradient(135deg, transparent 0%, rgba(192, 192, 192, 0.1) 50%, transparent 100%),
+                linear-gradient(45deg, transparent 0%, rgba(230, 230, 250, 0.1) 50%, transparent 100%);
+        }
+
+        .card[data-color-scheme='emerald'] .card-inner {
+            background: 
+                linear-gradient(45deg, transparent 0%, rgba(80, 200, 120, 0.1) 50%, transparent 100%),
+                radial-gradient(circle at 50% 50%, rgba(60, 179, 113, 0.15) 0%, transparent 100%);
+        }
+
+        .card[data-color-scheme='sapphire'] .card-inner {
+            background: 
+                linear-gradient(135deg, transparent 0%, rgba(8, 37, 103, 0.1) 50%, transparent 100%),
+                linear-gradient(45deg, transparent 0%, rgba(65, 105, 225, 0.1) 50%, transparent 100%);
+        }
+
+        .card[data-color-scheme='ruby'] .card-inner {
+            background: 
+                linear-gradient(45deg, transparent 0%, rgba(224, 17, 95, 0.1) 50%, transparent 100%),
+                radial-gradient(circle at 50% 50%, rgba(255, 105, 180, 0.15) 0%, transparent 100%);
+        }
+
+        .card[data-color-scheme='copper'] .card-inner {
+            background: 
+                linear-gradient(135deg, transparent 0%, rgba(184, 115, 51, 0.1) 50%, transparent 100%),
+                linear-gradient(45deg, transparent 0%, rgba(205, 127, 50, 0.1) 50%, transparent 100%);
+        }
+
+        .card[data-color-scheme='bronze'] .card-inner {
+            background: 
+                linear-gradient(45deg, transparent 0%, rgba(205, 127, 50, 0.1) 50%, transparent 100%),
+                radial-gradient(circle at 50% 50%, rgba(139, 69, 19, 0.15) 0%, transparent 100%);
+        }
+
+        /* Enhanced border glow effects */
+        .card[data-color-scheme='rainbow'] .card-border {
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+            animation: rainbow-glow 6s linear infinite;
+        }
+
+        .card[data-color-scheme='mythic'] .card-border {
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.3);
+            animation: mythic-glow 4s ease infinite;
+        }
+
+        .card[data-color-scheme='crystal'] .card-border {
+            box-shadow: 0 0 15px rgba(230, 230, 250, 0.3);
+            animation: crystal-glow 5s ease-in-out infinite;
+        }
+
+        @keyframes rainbow-glow {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+
+        @keyframes mythic-glow {
+            0%, 100% { box-shadow: 0 0 25px rgba(255, 215, 0, 0.3); }
+            50% { box-shadow: 0 0 35px rgba(255, 105, 180, 0.3); }
+        }
+
+        @keyframes crystal-glow {
+            0%, 100% { box-shadow: 0 0 15px rgba(230, 230, 250, 0.3); }
+            50% { box-shadow: 0 0 25px rgba(135, 206, 235, 0.3); }
+        }
+
+        /* Add geometric patterns for higher level cards */
+        .card[data-color-scheme='rainbow']::before,
+        .card[data-color-scheme='mythic']::before,
+        .card[data-color-scheme='crystal']::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: 
+                linear-gradient(45deg, transparent 45%, rgba(255, 255, 255, 0.1) 49%, transparent 51%),
+                linear-gradient(-45deg, transparent 45%, rgba(255, 255, 255, 0.1) 49%, transparent 51%);
+            background-size: 30px 30px;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 min-h-screen flex flex-col items-center justify-center p-4 md:p-8 gap-8">
+    <div class="no-print text-center">
+        <h1 class="text-3xl text-white mb-4">Your Coffee Trading Card</h1>
+        <div class="flex gap-4 justify-center mb-4">
+            <button onclick="window.print()" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                </svg>
+                Print Card
+            </button>
+            <button onclick="downloadCard()" class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition-colors flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                Download PNG
+            </button>
+        </div>
+        <p class="text-gray-400">Tip: For best results, print on glossy photo paper</p>
+        <p class="text-gray-400 mt-1">Cut along the dotted lines when printing</p>
+    </div>
+
+    <div class="card-container" id="cardContainer">
+        <div class="cut-guide"></div>
+        <div class="cut-lines">
+            <div class="corner corner-tl"></div>
+            <div class="corner corner-tr"></div>
+            <div class="corner corner-bl"></div>
+            <div class="corner corner-br"></div>
+        </div>
+
+        <div class="card" id="cardElement" data-color-scheme="{{ badge_info.color_scheme }}">
+            <div class="card-border" style="
+                --border-color-1: {{ 
+                    '#FFD700' if badge_info.color_scheme == 'rainbow' or badge_info.color_scheme == 'gold' or badge_info.color_scheme == 'mythic'
+                    else '#E6E6FA' if badge_info.color_scheme == 'crystal'
+                    else '#C0C0C0' if badge_info.color_scheme == 'silver'
+                    else '#50C878' if badge_info.color_scheme == 'emerald'
+                    else '#082567' if badge_info.color_scheme == 'sapphire'
+                    else '#E0115F' if badge_info.color_scheme == 'ruby'
+                    else '#B87333' if badge_info.color_scheme == 'copper'
+                    else '#CD7F32'
+                }};
+                --border-color-2: {{ 
+                    '#FFA500' if badge_info.color_scheme == 'rainbow'
+                    else '#FF69B4' if badge_info.color_scheme == 'mythic'
+                    else '#B0E0E6' if badge_info.color_scheme == 'crystal'
+                    else '#DAA520' if badge_info.color_scheme == 'gold'
+                    else '#E6E6FA' if badge_info.color_scheme == 'silver'
+                    else '#3CB371' if badge_info.color_scheme == 'emerald'
+                    else '#4169E1' if badge_info.color_scheme == 'sapphire'
+                    else '#FF69B4' if badge_info.color_scheme == 'ruby'
+                    else '#CD7F32' if badge_info.color_scheme == 'copper'
+                    else '#8B4513'
+                }};
+                --border-color-3: {{ 
+                    '#FF6347' if badge_info.color_scheme == 'rainbow'
+                    else '#9370DB' if badge_info.color_scheme == 'mythic'
+                    else '#87CEEB' if badge_info.color_scheme == 'crystal'
+                    else '#FFD700' if badge_info.color_scheme == 'gold'
+                    else '#C0C0C0' if badge_info.color_scheme == 'silver'
+                    else '#50C878' if badge_info.color_scheme == 'emerald'
+                    else '#082567' if badge_info.color_scheme == 'sapphire'
+                    else '#E0115F' if badge_info.color_scheme == 'ruby'
+                    else '#B87333' if badge_info.color_scheme == 'copper'
+                    else '#CD7F32'
+                }};
+                --border-color-4: {{ 
+                    '#4169E1' if badge_info.color_scheme == 'rainbow'
+                    else '#FFD700' if badge_info.color_scheme == 'mythic'
+                    else '#E6E6FA' if badge_info.color_scheme == 'crystal'
+                    else '#DAA520' if badge_info.color_scheme == 'gold'
+                    else '#E6E6FA' if badge_info.color_scheme == 'silver'
+                    else '#3CB371' if badge_info.color_scheme == 'emerald'
+                    else '#4169E1' if badge_info.color_scheme == 'sapphire'
+                    else '#FF69B4' if badge_info.color_scheme == 'ruby'
+                    else '#CD7F32' if badge_info.color_scheme == 'copper'
+                    else '#8B4513'
+                }};
+            "></div>
+            <div class="card-inner">
+                <div class="shine"></div>
+                <div class="relative h-full p-4 flex flex-col">
+                    <!-- Card Header -->
+                    <div class="text-center mb-3">
+                        <div class="text-4xl font-bold text-white mb-2">{{ badge_info.emoji }}</div>
+                        <h2 class="text-xl font-bold text-white mb-1">{{ user.name|capitalize_name }}</h2>
+                        <div class="text-sm text-blue-400">Level {{ badge_info.level }} {{ badge_info.title }}</div>
+                    </div>
+
+                    <!-- Stats Box -->
+                    <div class="stats-box rounded-lg p-2 mb-2">
+                        <div class="grid grid-cols-2 gap-1 text-sm">
+                            <div class="text-gray-300">Total Coffees:</div>
+                            <div class="text-right text-white font-semibold">{{ user.coffee_count }}</div>
+                            {% if stats.avg_per_day %}
+                            <div class="text-gray-300">Daily Avg:</div>
+                            <div class="text-right text-white font-semibold">{{ stats.avg_per_day }}</div>
+                            {% endif %}
+                            {% if stats.current_streak %}
+                            <div class="text-gray-300">Current Streak:</div>
+                            <div class="text-right text-white font-semibold">{{ stats.current_streak }} days</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="text-xs text-gray-300 mb-2 italic px-1">
+                        "{{ badge_info.description }}"
+                    </div>
+
+                    <!-- Achievements -->
+                    {% if badge_info.achievements %}
+                    <div class="achievements-section mb-2">
+                        <div class="achievements-grid">
+                            {% for achievement in badge_info.achievements %}
+                            <div class="achievement-badge">
+                                <span class="emoji">{{ achievement.emoji }}</span>
+                                <span class="text-gray-300">{{ achievement.title }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Footer -->
+                <div class="card-footer">
+                    <div class="footer-text">
+                        Coffee Leaderboard Trading Card • {{ stats.first_coffee.strftime('%B %d, %Y') }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add 3D tilt effect
+        const card = document.querySelector('.card');
+        
+        card.addEventListener('mousemove', (e) => {
+            const rect = card.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            
+            const rotateX = (y - centerY) / 20;
+            const rotateY = (centerX - x) / 20;
+            
+            card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+        });
+        
+        card.addEventListener('mouseleave', () => {
+            card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0)';
+        });
+
+        async function downloadCard() {
+            // Create a new canvas element
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas size (4x for high resolution)
+            const width = 63 * 4;  // 63mm
+            const height = 88 * 4; // 88mm
+            canvas.width = width;
+            canvas.height = height;
+            
+            // Draw background
+            ctx.fillStyle = '#1f2937';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Draw border
+            const borderWidth = width * 0.02;
+            const colorScheme = document.getElementById('cardElement').dataset.colorScheme;
+            const borderColor = {
+                'bronze': '#CD7F32',
+                'gold': '#FFD700',
+                'silver': '#C0C0C0',
+                'copper': '#B87333'
+            }[colorScheme] || '#CD7F32';
+            ctx.strokeStyle = borderColor;
+            ctx.lineWidth = borderWidth;
+            ctx.strokeRect(borderWidth/2, borderWidth/2, width - borderWidth, height - borderWidth);
+            
+            // Set up text styles
+            ctx.textAlign = 'center';
+            ctx.fillStyle = 'white';
+            ctx.textBaseline = 'middle';
+            
+            // Draw emoji
+            ctx.font = `${width * 0.15}px Arial`;
+            ctx.fillText('{{ badge_info.emoji }}', width/2, height * 0.15);
+            
+            // Draw name
+            ctx.font = `bold ${width * 0.08}px "Space Grotesk"`;
+            ctx.fillStyle = '#FFFFFF';  // Bright white for name
+            ctx.fillText('{{ user.name|capitalize_name }}', width/2, height * 0.25);
+            
+            // Draw level
+            ctx.fillStyle = '#60A5FA';  // Bright blue for level
+            ctx.font = `${width * 0.05}px "Space Grotesk"`;
+            ctx.fillText('Level {{ badge_info.level }} {{ badge_info.title }}', width/2, height * 0.32);
+            
+            // Draw stats box
+            const statsBoxY = height * 0.4;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';  // Darker background for better contrast
+            roundRect(ctx, width * 0.1, statsBoxY, width * 0.8, height * 0.15, 10);
+            ctx.fill();
+            
+            // Draw stats text
+            ctx.fillStyle = '#9CA3AF';  // Lighter gray for labels
+            ctx.font = `${width * 0.04}px "Space Grotesk"`;
+            ctx.textAlign = 'left';
+            ctx.fillText('Total Coffees:', width * 0.15, statsBoxY + height * 0.04);
+            ctx.fillText('Daily Avg:', width * 0.15, statsBoxY + height * 0.11);
+            
+            ctx.textAlign = 'right';
+            ctx.fillStyle = '#FFFFFF';  // Bright white for values
+            ctx.font = `bold ${width * 0.04}px "Space Grotesk"`;
+            ctx.fillText('{{ user.coffee_count }}', width * 0.85, statsBoxY + height * 0.04);
+            ctx.fillText('{{ stats.avg_per_day }}', width * 0.85, statsBoxY + height * 0.11);
+            
+            // Draw description
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#9CA3AF';  // Lighter gray for description
+            ctx.font = `italic ${width * 0.035}px "Space Grotesk"`;
+            ctx.fillText('"{{ badge_info.description }}"', width/2, height * 0.6);
+            
+            // Draw achievements
+            {% if badge_info.achievements %}
+            const achievementBoxY = height * 0.7;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';  // Darker background for better contrast
+            roundRect(ctx, width * 0.1, achievementBoxY, width * 0.8, height * 0.15, 10);
+            ctx.fill();
+            
+            ctx.font = `${width * 0.04}px "Space Grotesk"`;
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#FFFFFF';  // Bright white for achievements
+            {% for achievement in badge_info.achievements %}
+            ctx.fillText('{{ achievement.emoji }} {{ achievement.title }}', 
+                width * 0.15, 
+                achievementBoxY + height * {{ 0.04 + loop.index0 * 0.06 }});
+            {% endfor %}
+            {% endif %}
+            
+            // Draw footer
+            ctx.fillStyle = '#6B7280';  // Darker gray for footer
+            ctx.font = `${width * 0.025}px "Space Grotesk"`;
+            ctx.textAlign = 'center';
+            ctx.fillText('Coffee Leaderboard Trading Card • {{ stats.first_coffee.strftime("%B %d, %Y") }}',
+                width/2, height * 0.95);
+            
+            // Convert to PNG and download
+            const image = canvas.toDataURL('image/png', 1.0);
+            const link = document.createElement('a');
+            link.download = '{{ user.name|capitalize_name }}_coffee_card.png';
+            link.href = image;
+            link.click();
+        }
+        
+        // Helper function to draw rounded rectangles
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        // Helper function to get border color
+        function getBorderColor(scheme) {
+            switch(scheme) {
+                case 'bronze': return '#CD7F32';
+                case 'gold': return '#FFD700';
+                case 'silver': return '#C0C0C0';
+                case 'copper': return '#B87333';
+                default: return '#CD7F32';
+            }
+        }
+    </script>
+</body>
+</html> 

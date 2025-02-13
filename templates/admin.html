@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Coffee Leaderboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .gradient-text {
+            background: linear-gradient(45deg, #c59d5f, #8b4513);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-4xl font-bold gradient-text">Admin Panel</h1>
+            <div class="space-x-4">
+                <a href="{{ url_for('index') }}" class="text-blue-400 hover:text-blue-300">Back to Leaderboard</a>
+                <a href="{{ url_for('admin_logout') }}" class="text-red-400 hover:text-red-300">Logout</a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="bg-green-500 text-white p-3 rounded-lg mb-4">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Admin Settings -->
+        <div class="bg-gray-800 rounded-xl shadow-xl p-6 mb-8 border border-gray-700">
+            <h2 class="text-2xl font-semibold mb-6 text-blue-400">Admin Settings</h2>
+            <form action="{{ url_for('change_password') }}" method="post" class="max-w-md">
+                <div class="space-y-4">
+                    <div>
+                        <label for="current_password" class="block text-sm font-medium text-gray-300">Current Password</label>
+                        <input type="password" name="current_password" id="current_password" required
+                               class="mt-1 block w-full rounded-lg bg-gray-700 border-gray-600 text-white
+                                      focus:border-blue-500 focus:ring-blue-500 py-2 px-4">
+                    </div>
+                    <div>
+                        <label for="new_password" class="block text-sm font-medium text-gray-300">New Password</label>
+                        <input type="password" name="new_password" id="new_password" required
+                               class="mt-1 block w-full rounded-lg bg-gray-700 border-gray-600 text-white
+                                      focus:border-blue-500 focus:ring-blue-500 py-2 px-4"
+                               minlength="8">
+                    </div>
+                    <div>
+                        <label for="confirm_password" class="block text-sm font-medium text-gray-300">Confirm New Password</label>
+                        <input type="password" name="confirm_password" id="confirm_password" required
+                               class="mt-1 block w-full rounded-lg bg-gray-700 border-gray-600 text-white
+                                      focus:border-blue-500 focus:ring-blue-500 py-2 px-4"
+                               minlength="8">
+                    </div>
+                    <button type="submit"
+                            class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg
+                                   hover:bg-blue-700 transition-colors duration-200
+                                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900">
+                        Change Password
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- User Management -->
+        <div class="bg-gray-800 rounded-xl shadow-xl p-6 mb-8 border border-gray-700">
+            <h2 class="text-2xl font-semibold mb-6 text-blue-400">Leaderboard Management</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full table-auto">
+                    <thead class="bg-gray-700">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Coffees</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Joined</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Latest Photo</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Customization</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-700">
+                        {% for entry in entries %}
+                        <tr class="hover:bg-gray-700 transition-colors duration-200">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <a href="{{ url_for('user_history', user_id=entry.id) }}" 
+                                   class="text-blue-400 hover:text-blue-300">
+                                    {{ entry.name|capitalize_name }}
+                                </a>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {{ entry.coffee_count }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {{ entry.created_at.strftime('%Y-%m-%d') }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if entry.photos %}
+                                <img src="{{ url_for('static', filename=entry.photos[0].photo_path) }}" 
+                                     alt="Latest coffee photo" 
+                                     class="h-16 w-16 object-cover rounded-md">
+                                {% else %}
+                                <span class="text-gray-500">No photos</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4">
+                                <button onclick="openCustomizeModal('{{ entry.id }}')" 
+                                        class="bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition-colors">
+                                    Customize
+                                </button>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex space-x-2">
+                                    <a href="{{ url_for('delete_entry', entry_id=entry.id) }}" 
+                                       onclick="return confirm('Are you sure you want to delete this entry and all associated photos?')"
+                                       class="text-red-400 hover:text-red-300">Delete</a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Recent Photos -->
+        <div class="bg-gray-800 rounded-xl shadow-xl p-6 border border-gray-700">
+            <h2 class="text-2xl font-semibold mb-6 text-blue-400">Recent Photos</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for photo in photos %}
+                <div class="bg-gray-700 rounded-lg overflow-hidden">
+                    <img src="{{ url_for('static', filename=photo.photo_path) }}" 
+                         alt="Coffee photo" 
+                         class="w-full h-48 object-cover">
+                    <div class="p-4">
+                        <p class="text-sm text-gray-300">Posted by: {{ photo.entry.name }}</p>
+                        <p class="text-xs text-gray-400">{{ photo.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
+                        <div class="mt-2">
+                            <a href="{{ url_for('delete_photo', photo_id=photo.id) }}" 
+                               class="text-red-400 hover:text-red-300 text-sm"
+                               onclick="return confirm('Are you sure you want to delete this photo?')">
+                                Delete Photo
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Customization Modal -->
+    <div id="customizeModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-semibold text-blue-400">Customize User Card</h3>
+                <button onclick="closeCustomizeModal()" class="text-gray-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <form id="customizeForm" method="POST" class="space-y-6">
+                <!-- Level Customization -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Custom Level (1-10)</label>
+                    <input type="number" name="custom_level" min="1" max="10" 
+                           class="bg-gray-700 text-white rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Title Customization -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Custom Title</label>
+                    <input type="text" name="custom_title" placeholder="e.g., Coffee Emperor" 
+                           class="bg-gray-700 text-white rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Description Customization -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Custom Description</label>
+                    <textarea name="custom_description" rows="2" placeholder="A brief description of their coffee journey" 
+                              class="bg-gray-700 text-white rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+
+                <!-- Color Scheme -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Color Scheme</label>
+                    <select name="custom_color_scheme" 
+                            class="bg-gray-700 text-white rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-blue-500">
+                        <option value="">Default</option>
+                        <option value="rainbow">Rainbow</option>
+                        <option value="mythic">Mythic</option>
+                        <option value="crystal">Crystal</option>
+                        <option value="gold">Gold</option>
+                        <option value="silver">Silver</option>
+                        <option value="emerald">Emerald</option>
+                        <option value="sapphire">Sapphire</option>
+                        <option value="ruby">Ruby</option>
+                        <option value="copper">Copper</option>
+                        <option value="bronze">Bronze</option>
+                    </select>
+                </div>
+
+                <!-- Emoji -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Custom Emoji</label>
+                    <input type="text" name="custom_emoji" placeholder="e.g., 👑" maxlength="2"
+                           class="bg-gray-700 text-white rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Custom Badges -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Custom Badges</label>
+                    <div id="badgeContainer" class="space-y-4">
+                        <!-- Badge template will be added here -->
+                    </div>
+                    <button type="button" onclick="addBadge()" 
+                            class="mt-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                        Add Badge
+                    </button>
+                </div>
+
+                <div class="flex justify-end space-x-4 pt-4 border-t border-gray-700">
+                    <a href="#" onclick="resetCustomizations()" 
+                       class="text-red-400 hover:text-red-300 px-4 py-2">
+                        Reset Customizations
+                    </a>
+                    <button type="submit" 
+                            class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let currentUserId = null;
+
+        // Load existing user data when opening modal
+        async function openCustomizeModal(userId) {
+            currentUserId = userId;
+            const modal = document.getElementById('customizeModal');
+            const form = document.getElementById('customizeForm');
+            const container = document.getElementById('badgeContainer');
+            
+            // Clear previous form data
+            form.reset();
+            container.innerHTML = '';
+            
+            try {
+                // Fetch user data
+                const response = await fetch(`/admin/get_user/${userId}`);
+                if (response.ok) {
+                    const userData = await response.json();
+                    
+                    // Fill in form fields
+                    if (userData.custom_level) {
+                        form.querySelector('[name="custom_level"]').value = userData.custom_level;
+                    }
+                    if (userData.custom_title) {
+                        form.querySelector('[name="custom_title"]').value = userData.custom_title;
+                    }
+                    if (userData.custom_description) {
+                        form.querySelector('[name="custom_description"]').value = userData.custom_description;
+                    }
+                    if (userData.custom_color_scheme) {
+                        form.querySelector('[name="custom_color_scheme"]').value = userData.custom_color_scheme;
+                    }
+                    if (userData.custom_emoji) {
+                        form.querySelector('[name="custom_emoji"]').value = userData.custom_emoji;
+                    }
+                    
+                    // Add existing badges
+                    if (userData.custom_badges) {
+                        const badges = JSON.parse(userData.custom_badges);
+                        badges.forEach(badge => addBadge(badge));
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading user data:', error);
+            }
+            
+            // Show modal
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            form.action = `/admin/update_user/${userId}`;
+        }
+
+        function closeCustomizeModal() {
+            const modal = document.getElementById('customizeModal');
+            const form = document.getElementById('customizeForm');
+            const container = document.getElementById('badgeContainer');
+            
+            // Reset form and clear badges
+            form.reset();
+            container.innerHTML = '';
+            currentUserId = null;
+            
+            // Hide modal
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function addBadge(existingBadge = null) {
+            const container = document.getElementById('badgeContainer');
+            const badgeDiv = document.createElement('div');
+            badgeDiv.className = 'flex space-x-2 items-start bg-gray-700/50 p-4 rounded-lg';
+            
+            const badgeContent = `
+                <div class="flex-1 space-y-2">
+                    <input type="text" name="badge_title[]" placeholder="Badge Title" 
+                           value="${existingBadge?.title || ''}"
+                           class="bg-gray-700 text-white rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-blue-500">
+                    <input type="text" name="badge_description[]" placeholder="Badge Description" 
+                           value="${existingBadge?.description || ''}"
+                           class="bg-gray-700 text-white rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-blue-500">
+                    <div class="flex items-center space-x-2">
+                        <input type="text" name="badge_emoji[]" placeholder="Emoji" maxlength="2"
+                               value="${existingBadge?.emoji || ''}"
+                               class="bg-gray-700 text-white rounded-lg px-4 py-2 w-24 focus:ring-2 focus:ring-blue-500">
+                        <span class="text-gray-400 text-sm">← Enter a single emoji</span>
+                    </div>
+                </div>
+                <button type="button" onclick="removeBadge(this)" 
+                        class="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            `;
+            
+            badgeDiv.innerHTML = badgeContent;
+            container.appendChild(badgeDiv);
+            
+            // Focus the title input of the new badge
+            if (!existingBadge) {
+                badgeDiv.querySelector('input[name="badge_title[]"]').focus();
+            }
+        }
+
+        function removeBadge(button) {
+            const badgeDiv = button.closest('.flex');
+            badgeDiv.classList.add('opacity-0', 'scale-95');
+            badgeDiv.style.transition = 'all 0.2s ease-out';
+            
+            setTimeout(() => {
+                badgeDiv.remove();
+            }, 200);
+        }
+
+        async function resetCustomizations() {
+            if (!currentUserId) return;
+            
+            if (confirm('Are you sure you want to reset all customizations for this user?')) {
+                try {
+                    const response = await fetch(`/admin/reset_user/${currentUserId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                    });
+                    
+                    if (response.ok) {
+                        closeCustomizeModal();
+                        window.location.reload();
+                    } else {
+                        alert('Failed to reset customizations. Please try again.');
+                    }
+                } catch (error) {
+                    console.error('Error resetting customizations:', error);
+                    alert('An error occurred. Please try again.');
+                }
+            }
+        }
+
+        // Form submission handling
+        document.getElementById('customizeForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    body: new FormData(this)
+                });
+                
+                if (response.ok) {
+                    closeCustomizeModal();
+                    window.location.reload();
+                } else {
+                    const data = await response.json();
+                    alert(data.message || 'Failed to save changes. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error saving changes:', error);
+                alert('An error occurred. Please try again.');
+            }
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('customizeModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeCustomizeModal();
+            }
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && !document.getElementById('customizeModal').classList.contains('hidden')) {
+                closeCustomizeModal();
+            }
+        });
+    </script>
+</body>
+</html> 

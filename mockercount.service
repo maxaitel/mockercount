@@ -1,0 +1,14 @@
+[Unit]
+Description=Mockercount Flask Application
+After=network.target
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/maxdev/mockercount
+Environment="PATH=/home/ubuntu/maxdev/mockercount/venv/bin"
+ExecStart=/home/ubuntu/maxdev/mockercount/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:8000 app:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target 
