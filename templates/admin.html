@@ -144,9 +144,41 @@
                     <div class="p-4">
                         <p class="text-sm text-gray-300">Posted by: {{ photo.entry.name }}</p>
                         <p class="text-xs text-gray-400">{{ photo.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
-                        <div class="mt-2">
+                        <div class="mt-2 space-y-2">
+                            {% if photo.featured_as %}
+                                {% for feature in photo.featured_as %}
+                                <div class="flex items-center justify-between">
+                                    <span class="text-yellow-400 text-sm">
+                                        Featured as Photo of the {{ feature.feature_type|capitalize }}
+                                    </span>
+                                    <form action="{{ url_for('unfeature_photo', feature_id=feature.id) }}" 
+                                          method="POST" class="inline">
+                                        <button type="submit" 
+                                                class="text-red-400 hover:text-red-300 text-sm"
+                                                onclick="return confirm('Remove this photo from featured?')">
+                                            Unfeature
+                                        </button>
+                                    </form>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <form action="{{ url_for('feature_photo') }}" method="POST" class="space-y-2">
+                                    <input type="hidden" name="photo_id" value="{{ photo.id }}">
+                                    <div class="flex gap-2">
+                                        <select name="feature_type" 
+                                                class="bg-gray-600 text-white text-sm rounded px-2 py-1 flex-grow">
+                                            <option value="week">Photo of the Week</option>
+                                            <option value="month">Photo of the Month</option>
+                                        </select>
+                                        <button type="submit" 
+                                                class="bg-yellow-600 hover:bg-yellow-700 text-white text-sm px-3 py-1 rounded">
+                                            Feature
+                                        </button>
+                                    </div>
+                                </form>
+                            {% endif %}
                             <a href="{{ url_for('delete_photo', photo_id=photo.id) }}" 
-                               class="text-red-400 hover:text-red-300 text-sm"
+                               class="text-red-400 hover:text-red-300 text-sm block"
                                onclick="return confirm('Are you sure you want to delete this photo?')">
                                 Delete Photo
                             </a>

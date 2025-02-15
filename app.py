@@ -13,9 +13,64 @@ import time
 import json
 from dotenv import load_dotenv
 import secrets
+import pytz
 
 # Load environment variables
 load_dotenv()
+
+# Configure timezone
+NZ_TZ = pytz.timezone('Pacific/Auckland')
+UTC_TZ = pytz.UTC
+
+def ensure_tz_aware(dt, default_tz=UTC_TZ):
+    """Ensure a datetime is timezone aware. If naive, assume it's in default_tz."""
+    if dt.tzinfo is None:
+        return default_tz.localize(dt)
+    return dt
+
+def utc_to_nz(utc_dt):
+    """Convert datetime to New Zealand time.
+    
+    Args:
+        utc_dt: A datetime object, either naive (assumed UTC) or tz-aware
+    Returns:
+        A timezone-aware datetime in NZ time
+    """
+    utc_dt = ensure_tz_aware(utc_dt)
+    return utc_dt.astimezone(NZ_TZ)
+
+def nz_to_utc(nz_dt):
+    """Convert NZ datetime to UTC.
+    
+    Args:
+        nz_dt: A datetime object, either naive (assumed NZ) or tz-aware
+    Returns:
+        A timezone-aware datetime in UTC
+    """
+    nz_dt = ensure_tz_aware(nz_dt, NZ_TZ)
+    return nz_dt.astimezone(UTC_TZ)
+
+def now_nz():
+    """Get current time in New Zealand."""
+    return datetime.now(NZ_TZ)
+
+def today_nz():
+    """Get current date in New Zealand."""
+    return now_nz().date()
+
+def start_of_day_nz(dt=None):
+    """Get start of day in NZ time for given date (defaults to today)."""
+    if dt is None:
+        dt = now_nz()
+    dt = ensure_tz_aware(dt, NZ_TZ)
+    return dt.replace(hour=0, minute=0, second=0, microsecond=0)
+
+def end_of_day_nz(dt=None):
+    """Get end of day in NZ time for given date (defaults to today)."""
+    if dt is None:
+        dt = now_nz()
+    dt = ensure_tz_aware(dt, NZ_TZ)
+    return dt.replace(hour=23, minute=59, second=59, microsecond=999999)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
@@ -107,7 +162,7 @@ def is_inappropriate(text):
 def check_rate_limit():
     """Check if the current IP has exceeded the rate limit."""
     ip = request.remote_addr
-    now = datetime.now()
+    now = now_nz()
     # Clean up old entries
     submission_history[ip] = [ts for ts in submission_history[ip] 
                             if now - ts < timedelta(minutes=RATE_LIMIT_MINUTES)]
@@ -146,11 +201,26 @@ class CoffeeEntry(db.Model):
     photos = db.relationship('CoffeePhoto', backref='entry', lazy=True, order_by='CoffeePhoto.timestamp.desc()')
     unlocked_achievements = db.relationship('UnlockedAchievement', backref='user', lazy=True)
 
+    @property
+    def created_at_nz(self):
+        """Get created_at in New Zealand time."""
+        return utc_to_nz(self.created_at)
+
+    @property
+    def created_date_nz(self):
+        """Get created date in New Zealand time."""
+        return self.created_at_nz.date()
+
 class CoffeePhoto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     entry_id = db.Column(db.Integer, db.ForeignKey('coffee_entry.id'), nullable=False)
     photo_path = db.Column(db.String(200))
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def timestamp_nz(self):
+        """Get timestamp in New Zealand time."""
+        return utc_to_nz(self.timestamp)
 
 class UnlockedAchievement(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -161,6 +231,16 @@ class UnlockedAchievement(db.Model):
     unlocked_at = db.Column(db.DateTime, default=datetime.utcnow)
     achievement_type = db.Column(db.String(50))  # e.g., 'streak', 'volume', 'consistency'
 
+class FeaturedPhoto(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    photo_id = db.Column(db.Integer, db.ForeignKey('coffee_photo.id'), nullable=False)
+    feature_type = db.Column(db.String(20), nullable=False)  # 'week' or 'month'
+    start_date = db.Column(db.DateTime, nullable=False)
+    end_date = db.Column(db.DateTime, nullable=False)
+    selected_by = db.Column(db.Integer, db.ForeignKey('admin.id'), nullable=False)
+    photo = db.relationship('CoffeePhoto', backref='featured_as', lazy=True)
+    admin = db.relationship('Admin', backref='featured_selections', lazy=True)
+
 @login_manager.user_loader
 def load_user(user_id):
     return Admin.query.get(int(user_id))
@@ -170,8 +250,63 @@ def allowed_file(filename):
 
 @app.route('/')
 def index():
-    leaderboard = CoffeeEntry.query.order_by(CoffeeEntry.coffee_count.desc()).all()
-    return render_template('index.html', leaderboard=leaderboard)
+    leaderboard = CoffeeEntry.query.order_by(CoffeeEntry.coffee_count.desc()).limit(10).all()
+    
+    # Get current featured photos
+    current_time = now_nz()
+    featured_week = FeaturedPhoto.query.filter(
+        FeaturedPhoto.feature_type == 'week',
+        FeaturedPhoto.start_date <= current_time,
+        FeaturedPhoto.end_date > current_time
+    ).first()
+    
+    featured_month = FeaturedPhoto.query.filter(
+        FeaturedPhoto.feature_type == 'month',
+        FeaturedPhoto.start_date <= current_time,
+        FeaturedPhoto.end_date > current_time
+    ).first()
+    
+    # Get most recent photo
+    most_recent_photo = CoffeePhoto.query.order_by(CoffeePhoto.timestamp.desc()).first()
+    
+    return render_template('index.html', 
+                         leaderboard=leaderboard,
+                         featured_week=featured_week,
+                         featured_month=featured_month,
+                         most_recent_photo=most_recent_photo)
+
+def get_streak_status(current_streak):
+    """Get the streak status information based on the current streak."""
+    if current_streak <= 0:
+        return {
+            'level': 'none',
+            'emoji': '🌱',
+            'message': 'Start your streak by having a coffee today!'
+        }
+    elif current_streak >= 30:
+        return {
+            'level': 'legendary',
+            'emoji': '🔥',
+            'message': f'Incredible! {current_streak} day streak - You\'re on fire!'
+        }
+    elif current_streak >= 14:
+        return {
+            'level': 'epic',
+            'emoji': '⚡',
+            'message': f'Epic {current_streak} day streak - Keep it going!'
+        }
+    elif current_streak >= 7:
+        return {
+            'level': 'awesome',
+            'emoji': '✨',
+            'message': f'Awesome {current_streak} day streak!'
+        }
+    else:
+        return {
+            'level': 'active',
+            'emoji': '☕',
+            'message': f'{current_streak} day streak - You\'re building momentum!'
+        }
 
 def get_user_stats(user):
     """Calculate various statistics for a user's coffee consumption."""
@@ -181,8 +316,8 @@ def get_user_stats(user):
     # Initialize stats dictionary
     stats = {}
     
-    # Get all timestamps
-    timestamps = [photo.timestamp for photo in user.photos]
+    # Get all timestamps and convert to NZ time
+    timestamps = [utc_to_nz(photo.timestamp) for photo in user.photos]
     timestamps.sort()
     
     # Most recent coffee
@@ -191,28 +326,50 @@ def get_user_stats(user):
     # First coffee (coffee journey started)
     stats['first_coffee'] = timestamps[0]
     
-    # Days since first coffee
-    days_since_start = (datetime.utcnow() - stats['first_coffee']).days
-    stats['days_active'] = max(1, days_since_start)  # Avoid division by zero
+    # Days since first coffee (in NZ timezone)
+    first_coffee_date = stats['first_coffee'].date()
+    today = today_nz()
+    days_since_start = (today - first_coffee_date).days
+    stats['days_active'] = days_since_start + 1  # Include both start and end day
+    
+    # Group photos by date in NZ timezone
+    daily_counts = defaultdict(int)
+    day_of_week_counts = defaultdict(int)
+    heatmap_data = [[0] * 24 for _ in range(7)]  # 7 days x 24 hours
+    
+    for ts in timestamps:
+        daily_counts[ts.date().isoformat()] += 1
+        day_of_week_counts[ts.strftime('%A')] += 1
+        # Add to heatmap data (day of week index 0-6, hour 0-23)
+        day_idx = ts.weekday()  # Monday = 0, Sunday = 6
+        hour = ts.hour
+        heatmap_data[day_idx][hour] += 1
+    
+    # Sort day of week counts to maintain consistent order
+    days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    sorted_day_counts = {day: day_of_week_counts.get(day, 0) for day in days_order}
+    
+    # Add the daily, weekly, and heatmap counts to stats
+    stats['daily_counts'] = dict(daily_counts)
+    stats['day_of_week_counts'] = sorted_day_counts
+    stats['heatmap_data'] = heatmap_data
     
     # Average coffees per day (over active days)
-    stats['avg_per_day'] = round(len(timestamps) / stats['days_active'], 2)
-    
-    # Group photos by date to find daily counts
-    daily_counts = defaultdict(int)
-    for ts in timestamps:
-        daily_counts[ts.date()] += 1
+    total_days_with_coffee = len(daily_counts)
+    stats['avg_per_day'] = round(len(timestamps) / max(1, days_since_start + 1), 2)  # Avoid division by zero
+    stats['days_with_coffee'] = total_days_with_coffee
+    stats['coffee_day_ratio'] = round(total_days_with_coffee / max(1, days_since_start + 1) * 100, 1)
     
     if daily_counts:
         # Most coffees in one day
         max_day = max(daily_counts.items(), key=lambda x: x[1])
         stats['most_in_day'] = {
             'count': max_day[1],
-            'date': max_day[0]
+            'date': datetime.strptime(max_day[0], '%Y-%m-%d').date()
         }
         
         # Find longest streak
-        dates = sorted(daily_counts.keys())
+        dates = sorted(datetime.strptime(d, '%Y-%m-%d').date() for d in daily_counts.keys())
         current_streak = max_streak = 1
         streak_end = dates[0]
         
@@ -231,20 +388,31 @@ def get_user_stats(user):
         }
         
         # Calculate current streak
-        today = datetime.utcnow().date()
+        today = now_nz().date()
+        yesterday = today - timedelta(days=1)
         current_streak = 0
-        for date in reversed(dates):
-            if (today - date).days == current_streak:
+        
+        # Check if user had coffee today or yesterday to maintain streak
+        has_today = today.isoformat() in daily_counts
+        has_yesterday = yesterday.isoformat() in daily_counts
+        
+        if has_today or has_yesterday:
+            # Start counting from yesterday if no coffee today yet
+            start_date = today if has_today else yesterday
+            current_streak = 1
+            
+            # Count backwards from the start date
+            check_date = start_date - timedelta(days=1)
+            while check_date.isoformat() in daily_counts:
                 current_streak += 1
-            else:
-                break
-        stats['current_streak'] = current_streak - 1  # Adjust because we started counting from 0
+                check_date -= timedelta(days=1)
+        
+        stats['current_streak'] = current_streak
+        stats['streak_status'] = get_streak_status(current_streak)
+        stats['has_coffee_today'] = has_today
         
         # Busiest day of week
-        day_of_week_counts = defaultdict(int)
-        for date in daily_counts.keys():
-            day_of_week_counts[date.strftime('%A')] += daily_counts[date]
-        busiest_day = max(day_of_week_counts.items(), key=lambda x: x[1])
+        busiest_day = max(sorted_day_counts.items(), key=lambda x: x[1])
         stats['busiest_day'] = {
             'day': busiest_day[0],
             'count': busiest_day[1]
@@ -265,11 +433,11 @@ def get_user_badge_info(user, stats):
         'color_scheme': 'bronze',
         'emoji': '🌱',
         'achievements': [],
-        'streak_info': {
-            'emoji': '',
-            'message': '',
-            'level': 'none'
-        }
+        'streak_info': stats.get('streak_status', {
+            'level': 'none',
+            'emoji': '🌱',
+            'message': 'Start your streak by having a coffee today!'
+        })
     }
 
     # Calculate level based on coffee count
@@ -534,7 +702,8 @@ def user_history(user_id):
     user = CoffeeEntry.query.get_or_404(user_id)
     stats = get_user_stats(user)
     badge_info = get_user_badge_info(user, stats)
-    return render_template('user_history.html', user=user, stats=stats, badge_info=badge_info)
+    rank = request.args.get('rank', None)
+    return render_template('user_history.html', user=user, stats=stats, badge_info=badge_info, rank=rank)
 
 @app.route('/user/<int:user_id>/card')
 def user_card(user_id):
@@ -646,10 +815,10 @@ def submit():
     try:
         # Record the submission time for rate limiting
         ip = request.remote_addr
-        submission_history[ip].append(datetime.now())
+        submission_history[ip].append(now_nz())
 
         filename = secure_filename(photo.filename)
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
+        timestamp = now_nz().strftime('%Y%m%d_%H%M%S_')
         filename = timestamp + filename
         if not os.path.exists(app.config['UPLOAD_FOLDER']):
             os.makedirs(app.config['UPLOAD_FOLDER'])
@@ -683,7 +852,7 @@ def submit():
         newly_unlocked = check_and_unlock_achievements(user)
         if newly_unlocked:
             achievement_names = [a['title'] for a in newly_unlocked]
-            flash(f'🎉 New achievement{"s" if len(newly_unlocked) > 1 else ""} unlocked: {", ".join(achievement_names)}!')
+            flash(f'New achievement{"s" if len(newly_unlocked) > 1 else ""} unlocked: {", ".join(achievement_names)}!')
 
         flash('Coffee added successfully! ☕')
     except Exception as e:
@@ -909,6 +1078,92 @@ def clear_level_up():
     if 'level_up' in session:
         session.pop('level_up')
     return '', 204
+
+@app.route('/search_user', methods=['POST'])
+def search_user():
+    name = request.form.get('search_name', '').strip().lower()
+    if not name:
+        flash('Please enter your name')
+        return redirect(url_for('index'))
+    
+    # Find the user
+    user = CoffeeEntry.query.filter_by(name=name).first()
+    if not user:
+        flash('No user found with that name')
+        return redirect(url_for('index'))
+    
+    # Get user's rank
+    rank_query = db.session.query(
+        CoffeeEntry,
+        db.func.row_number().over(
+            order_by=CoffeeEntry.coffee_count.desc()
+        ).label('rank')
+    ).subquery()
+    
+    user_rank = db.session.query(rank_query.c.rank).filter(
+        rank_query.c.id == user.id
+    ).scalar()
+    
+    return redirect(url_for('user_history', user_id=user.id, rank=user_rank))
+
+@app.route('/admin/feature_photo', methods=['POST'])
+@login_required
+def feature_photo():
+    photo_id = request.form.get('photo_id')
+    feature_type = request.form.get('feature_type')  # 'week' or 'month'
+    
+    if not photo_id or not feature_type or feature_type not in ['week', 'month']:
+        flash('Invalid request parameters')
+        return redirect(url_for('admin'))
+        
+    photo = CoffeePhoto.query.get_or_404(photo_id)
+    
+    # Calculate start and end dates based on feature type
+    start_date = start_of_day_nz()
+    if feature_type == 'week':
+        end_date = start_date + timedelta(days=7)
+    else:  # month
+        # Get the first day of next month
+        next_month = start_date.replace(day=28) + timedelta(days=4)
+        end_date = next_month - timedelta(days=next_month.day)
+    
+    # Remove any existing featured photos of the same type that overlap
+    existing_features = FeaturedPhoto.query.filter(
+        FeaturedPhoto.feature_type == feature_type,
+        FeaturedPhoto.end_date > start_date
+    ).all()
+    for feature in existing_features:
+        db.session.delete(feature)
+    
+    # Create new featured photo
+    featured = FeaturedPhoto(
+        photo_id=photo_id,
+        feature_type=feature_type,
+        start_date=start_date,
+        end_date=end_date,
+        selected_by=current_user.id
+    )
+    
+    db.session.add(featured)
+    db.session.commit()
+    
+    flash(f'Photo has been set as photo of the {feature_type}!')
+    return redirect(url_for('admin'))
+
+@app.route('/admin/unfeature_photo/<int:feature_id>', methods=['POST'])
+@login_required
+def unfeature_photo(feature_id):
+    feature = FeaturedPhoto.query.get_or_404(feature_id)
+    db.session.delete(feature)
+    db.session.commit()
+    
+    flash('Featured photo has been removed')
+    return redirect(url_for('admin'))
+
+# Make timezone available in templates
+@app.context_processor
+def inject_timezone():
+    return {'NZ_TZ': NZ_TZ}
 
 if __name__ == '__main__':
     with app.app_context():

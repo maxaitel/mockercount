@@ -11,6 +11,10 @@
     {% endmacro %}
     <title>{{ user.name|capitalize_name }}'s Coffee Journey</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix"></script>
     <style>
         .coffee-grid {
             display: grid;
@@ -23,7 +27,7 @@
             cursor: pointer;
         }
         .coffee-card:hover {
-            transform: translateY(-5px) rotate(2deg);
+            transform: translateY(-5px);
         }
         .coffee-card::before {
             content: "☕";
@@ -33,11 +37,9 @@
             font-size: 2rem;
             opacity: 0;
             transition: all 0.3s ease;
-            transform: rotate(-45deg);
         }
         .coffee-card:hover::before {
             opacity: 1;
-            transform: rotate(0deg);
         }
         .gradient-border {
             position: relative;
@@ -53,38 +55,18 @@
             animation: float 3s ease-in-out infinite;
         }
         @keyframes float {
-            0% {
-                transform: translateY(0px);
-            }
-            50% {
-                transform: translateY(-10px);
-            }
-            100% {
-                transform: translateY(0px);
-            }
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
         }
         .coffee-stats {
             position: relative;
-            overflow: hidden;
+            background: #1f2937;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
-        .coffee-stats::after {
-            content: "";
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(
-                45deg,
-                transparent 0%,
-                rgba(255, 255, 255, 0.1) 50%,
-                transparent 100%
-            );
-            animation: shine 3s infinite;
-        }
-        @keyframes shine {
-            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
-            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        .coffee-stats::after,
+        .coffee-stats::before {
+            display: none;
         }
         .achievement {
             position: relative;
@@ -180,40 +162,47 @@
         }
         
         .streak-none {
-            display: none;
+            opacity: 0.8;
         }
         
         .streak-active {
-            animation: gentle-glow 3s infinite;
+            background: linear-gradient(45deg, #1f2937, #1e3a8a);
+            animation: gentle-pulse 3s infinite;
         }
         
         .streak-awesome {
-            animation: gentle-glow 2.5s infinite;
+            background: linear-gradient(45deg, #1f2937, #3730a3);
+            animation: gentle-pulse 2.5s infinite;
         }
         
         .streak-epic {
-            animation: gentle-glow 2s infinite;
+            background: linear-gradient(45deg, #1f2937, #5b21b6);
+            animation: gentle-pulse 2s infinite;
         }
         
         .streak-legendary {
-            animation: strong-glow 2s infinite;
+            background: linear-gradient(45deg, #991b1b, #1f2937, #991b1b);
+            background-size: 200% 200%;
+            animation: legendary-pulse 3s infinite;
         }
         
-        @keyframes gentle-glow {
-            0%, 100% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.2); }
-            50% { box-shadow: 0 0 25px rgba(239, 68, 68, 0.4); }
+        @keyframes gentle-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
         }
         
-        @keyframes strong-glow {
-            0%, 100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.3); }
-            50% { box-shadow: 0 0 35px rgba(239, 68, 68, 0.5); }
+        @keyframes legendary-pulse {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
         
         .streak-emoji {
-            font-size: 2rem;
+            font-size: 2.5rem;
             margin-bottom: 0.5rem;
             display: inline-block;
             opacity: 0.9;
+            animation: float 3s ease-in-out infinite;
         }
         
         .streak-message {
@@ -222,6 +211,53 @@
             color: #e5e7eb;
             margin-top: 0.25rem;
             letter-spacing: 0.025em;
+        }
+
+        .level-progress {
+            position: relative;
+            background: rgba(17, 24, 39, 0.5);
+            padding: 1.25rem;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        .level-indicator {
+            font-weight: 600;
+            color: #60a5fa;
+        }
+
+        .coffee-count {
+            font-family: 'Space Grotesk', monospace;
+            font-weight: 500;
+        }
+
+        .max-level {
+            color: #d97706;
+            font-weight: bold;
+        }
+
+        .progress-bar {
+            height: 0.75rem;
+            background: rgba(17, 24, 39, 0.8);
+            border-radius: 1rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #3b82f6;
+            border-radius: 1rem;
+            position: relative;
+        }
+
+        .animate-pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
         /* Modal styles */
@@ -271,6 +307,21 @@
             padding: 10px;
             background-color: rgba(0, 0, 0, 0.5);
         }
+
+        .trend-btn {
+            background: #374151;
+            color: #9CA3AF;
+            transition: all 0.3s ease;
+        }
+        
+        .trend-btn:hover {
+            background: #4B5563;
+        }
+        
+        .trend-btn.active {
+            background: #3B82F6;
+            color: white;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen">
@@ -283,8 +334,20 @@
         </a>
 
         <div class="text-center mb-12">
-            <h1 class="text-5xl font-bold mb-6 floating">{{ user.name|capitalize_name }}'s Coffee Journey</h1>
-            <div class="inline-block coffee-stats bg-gray-800 rounded-lg p-6 shadow-xl">
+            <h1 class="text-5xl font-bold mb-4 floating">{{ user.name|capitalize_name }}'s Coffee Journey</h1>
+            {% if rank %}
+            <div class="text-2xl text-blue-400 mb-6">
+                Rank #{{ rank }}
+                {% if rank|int == 1 %}
+                    <span class="text-3xl">🥇</span>
+                {% elif rank|int == 2 %}
+                    <span class="text-3xl">🥈</span>
+                {% elif rank|int == 3 %}
+                    <span class="text-3xl">🥉</span>
+                {% endif %}
+            </div>
+            {% endif %}
+            <div class="inline-block bg-gray-800 rounded-lg p-6">
                 <p class="text-3xl text-blue-400 mb-4">Coffee Master Level</p>
                 <div class="flex items-center justify-center space-x-8">
                     <div class="text-center">
@@ -316,27 +379,72 @@
                                                       1000 %}
                         {% if next_level_threshold %}
                             {% set progress = ((user.coffee_count - current_level_threshold) / (next_level_threshold - current_level_threshold) * 100)|round|int %}
-                            <div class="text-sm text-gray-400 mb-1">Progress to Level {{ badge_info.level + 1 }}</div>
-                            <div class="relative h-4 bg-gray-700 rounded-full overflow-hidden">
-                                <div class="absolute inset-0 bg-gradient-to-r from-blue-500 to-blue-600"
-                                     style="width: {{ progress }}%">
+                            <div class="level-progress">
+                                <div class="flex justify-between items-center mb-2">
+                                    <div>
+                                        <div class="text-xs text-gray-400">Current</div>
+                                        <div class="level-indicator text-lg">Level {{ badge_info.level }}</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-xs text-gray-400">Next</div>
+                                        <div class="level-indicator text-lg">Level {{ badge_info.level + 1 }}</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: {{ progress }}%"></div>
+                                </div>
+                                
+                                <div class="mt-2 text-center">
+                                    <div class="coffee-count">
+                                        <span class="text-blue-400">{{ user.coffee_count }}</span>
+                                        <span class="text-gray-400">/</span>
+                                        <span class="text-gray-400">{{ next_level_threshold }}</span>
+                                        <span class="text-xs text-gray-500">coffees</span>
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-1">
+                                        {{ next_level_threshold - user.coffee_count }} more needed
+                                    </div>
                                 </div>
                             </div>
-                            <div class="flex justify-between text-xs text-gray-500 mt-1">
-                                <span>{{ user.coffee_count - current_level_threshold }}</span>
-                                <span>{{ next_level_threshold - current_level_threshold }} needed</span>
-                            </div>
                         {% else %}
-                            <div class="text-sm text-gray-400">Maximum Level Achieved! 🎉</div>
+                            <div class="level-progress">
+                                <div class="text-center">
+                                    <div class="text-3xl mb-2">🏆</div>
+                                    <div class="max-level text-lg font-bold mb-1">Maximum Level Achieved!</div>
+                                    <div class="text-sm text-gray-400">Level {{ badge_info.level }} Master</div>
+                                    <div class="coffee-count mt-2">
+                                        <span class="text-yellow-400">{{ user.coffee_count }}</span>
+                                        <span class="text-xs text-gray-500">total coffees</span>
+                                    </div>
+                                </div>
+                            </div>
                         {% endif %}
                     </div>
                 </div>
 
                 {% if stats and stats.current_streak >= 0 %}
-                <div class="streak-counter streak-{{ badge_info.streak_info.level }} mt-8">
-                    <div class="streak-emoji">{{ badge_info.streak_info.emoji }}</div>
-                    <div class="text-4xl font-bold text-white mb-2">{{ stats.current_streak }} Day Streak!</div>
-                    <div class="streak-message">{{ badge_info.streak_info.message }}</div>
+                <div class="streak-counter streak-{{ stats.streak_status.level }} mt-8">
+                    <div class="streak-emoji">{{ stats.streak_status.emoji }}</div>
+                    <div class="text-4xl font-bold text-white mb-2">
+                        {% if stats.current_streak > 0 %}
+                            {{ stats.current_streak }} Day Streak!
+                        {% else %}
+                            No Active Streak
+                        {% endif %}
+                    </div>
+                    <div class="streak-message">{{ stats.streak_status.message }}</div>
+                    {% if not stats.has_coffee_today and stats.current_streak > 0 %}
+                        <div class="mt-2 text-yellow-400">
+                            <span class="animate-pulse inline-block">⚠️</span> 
+                            Don't forget to log today's coffee to maintain your streak!
+                        </div>
+                    {% endif %}
+                    {% if stats.longest_streak and stats.longest_streak.days > stats.current_streak %}
+                        <div class="mt-4 text-sm text-gray-400">
+                            Personal Best: {{ stats.longest_streak.days }} days
+                        </div>
+                    {% endif %}
                 </div>
                 {% endif %}
 
@@ -398,6 +506,39 @@
 
             {% if stats %}
             <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Coffee Trend Graph -->
+                <div class="bg-gray-800 rounded-lg p-4 sm:p-6 shadow-xl col-span-1 md:col-span-2">
+                    <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-2">
+                        <h3 class="text-xl font-semibold text-blue-400">📈 Coffee Consumption Trends</h3>
+                        <div class="flex space-x-2">
+                            <button class="trend-btn active px-3 py-1 rounded-lg text-sm" data-period="week">Week</button>
+                            <button class="trend-btn px-3 py-1 rounded-lg text-sm" data-period="month">Month</button>
+                            <button class="trend-btn px-3 py-1 rounded-lg text-sm" data-period="year">Year</button>
+                        </div>
+                    </div>
+                    <div class="relative w-full" style="min-height: 250px; height: 40vh; max-height: 300px;">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Coffee Heatmap -->
+                <div class="bg-gray-800 rounded-lg p-4 sm:p-6 shadow-xl">
+                    <h3 class="text-xl font-semibold text-blue-400 mb-4">🗓️ Coffee Activity by Time</h3>
+                    <div class="relative w-full overflow-x-auto">
+                        <div style="min-height: 250px; height: 40vh; max-height: 300px;">
+                            <canvas id="heatmapChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Coffee Distribution -->
+                <div class="bg-gray-800 rounded-lg p-4 sm:p-6 shadow-xl">
+                    <h3 class="text-xl font-semibold text-blue-400 mb-4">📊 Coffee Distribution</h3>
+                    <div class="relative w-full" style="min-height: 250px; height: 40vh; max-height: 300px;">
+                        <canvas id="distributionChart"></canvas>
+                    </div>
+                </div>
+
                 <!-- Coffee Milestones -->
                 <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
                     <h3 class="text-xl font-semibold text-blue-400 mb-4">☕ Coffee Journey</h3>
@@ -409,10 +550,12 @@
                         <div>
                             <p class="text-gray-400">Days Active</p>
                             <p class="text-lg">{{ stats.days_active }} days</p>
+                            <p class="text-sm text-gray-500">({{ stats.days_with_coffee }} days with coffee - {{ stats.coffee_day_ratio }}%)</p>
                         </div>
                         <div>
                             <p class="text-gray-400">Average Daily Coffees</p>
                             <p class="text-lg">{{ stats.avg_per_day }} per day</p>
+                            <p class="text-sm text-gray-500">({{ user.coffee_count }} total coffees)</p>
                         </div>
                     </div>
                 </div>
@@ -447,13 +590,13 @@
             <div class="coffee-grid mt-12">
                 {% for photo in user.photos %}
                 <div class="gradient-border">
-                    <div class="coffee-card" onclick="openModal('{{ url_for('static', filename=photo.photo_path) }}', '{{ photo.timestamp.strftime('%B %d, %Y at %I:%M %p') }}')">
+                    <div class="coffee-card">
                         <img src="{{ url_for('static', filename=photo.photo_path) }}" 
                              alt="Coffee photo" 
                              class="w-full h-64 object-cover">
                         <div class="p-4">
-                            <p class="text-gray-300 font-medium">{{ photo.timestamp.strftime('%B %d, %Y') }}</p>
-                            <p class="text-sm text-gray-500">{{ photo.timestamp.strftime('%I:%M %p') }}</p>
+                            <p class="text-gray-300 font-medium">{{ photo.timestamp_nz.strftime('%B %d, %Y') }}</p>
+                            <p class="text-sm text-gray-500">{{ photo.timestamp_nz.strftime('%I:%M %p') }}</p>
                         </div>
                     </div>
                 </div>
@@ -468,49 +611,323 @@
         </div>
     </div>
 
-    <!-- Image Modal -->
+    <!-- Modal for expanded images -->
     <div id="imageModal" class="modal" onclick="closeModal()">
-        <span class="modal-close">&times;</span>
-        <img id="modalImage" class="modal-content">
+        <span class="modal-close" onclick="event.stopPropagation(); closeModal()">&times;</span>
+        <img class="modal-content" id="expandedImage">
         <div id="modalDate" class="modal-date"></div>
     </div>
 
     <script>
-        function openModal(imageSrc, date) {
-            const modal = document.getElementById('imageModal');
-            const modalImg = document.getElementById('modalImage');
-            const modalDate = document.getElementById('modalDate');
-            
-            modalImg.src = imageSrc;
-            modalDate.textContent = date;
-            modal.style.display = "block";
-            setTimeout(() => modal.classList.add('show'), 10);
-            
-            // Prevent scrolling of the background
-            document.body.style.overflow = 'hidden';
-        }
+        // Get modal elements
+        const modal = document.getElementById('imageModal');
+        const expandedImg = document.getElementById('expandedImage');
+        const modalDate = document.getElementById('modalDate');
 
+        // Add click handlers to all coffee card images
+        document.querySelectorAll('.coffee-card img').forEach(img => {
+            img.style.cursor = 'zoom-in';
+            img.onclick = function() {
+                modal.style.display = 'block';
+                expandedImg.src = this.src;
+                const dateElement = this.closest('.coffee-card').querySelector('.text-gray-300');
+                const timeElement = this.closest('.coffee-card').querySelector('.text-gray-500');
+                modalDate.textContent = `${dateElement.textContent} at ${timeElement.textContent}`;
+                setTimeout(() => modal.classList.add('show'), 10);
+            };
+        });
+        
         function closeModal() {
-            const modal = document.getElementById('imageModal');
             modal.classList.remove('show');
-            setTimeout(() => {
-                modal.style.display = "none";
-                // Re-enable scrolling
-                document.body.style.overflow = 'auto';
-            }, 300);
+            setTimeout(() => modal.style.display = 'none', 300);
         }
 
-        // Close modal when pressing escape key
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 closeModal();
             }
         });
 
-        // Only close if clicking outside the image
-        document.getElementById('modalImage').onclick = function(event) {
-            event.stopPropagation();
-        };
+        // Chart.js Configuration
+        Chart.defaults.color = '#9CA3AF';
+        Chart.defaults.borderColor = '#374151';
+        Chart.register(ChartDataLabels);
+        
+        // Coffee Trend Chart
+        const trendCtx = document.getElementById('trendChart').getContext('2d');
+        const trendData = JSON.parse('{{ stats.daily_counts|tojson|safe if stats else "{}" }}');
+        
+        const trendChart = new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'Coffees',
+                    data: Object.entries(trendData).map(([date, count]) => ({
+                        x: new Date(date),
+                        y: count
+                    })).sort((a, b) => a.x - b.x),
+                    borderColor: '#3B82F6',
+                    backgroundColor: '#3B82F680',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    datalabels: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function(items) {
+                                const date = new Date(items[0].parsed.x);
+                                return date.toLocaleDateString('en-NZ', { 
+                                    weekday: 'long',
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                });
+                            },
+                            label: function(item) {
+                                return `${item.parsed.y} coffee${item.parsed.y !== 1 ? 's' : ''}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'day',
+                            displayFormats: {
+                                day: 'MMM d',
+                                month: 'MMM yyyy'
+                            },
+                            tooltipFormat: 'PPP'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        },
+                        title: {
+                            display: true,
+                            text: 'Number of Coffees'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Coffee Heatmap Chart
+        const heatmapCtx = document.getElementById('heatmapChart').getContext('2d');
+        const days = ['Sunday', 'Saturday', 'Friday', 'Thursday', 'Wednesday', 'Tuesday', 'Monday'].reverse();
+        const hours = Array.from({length: 24}, (_, i) => i);
+        
+        const heatmapData = JSON.parse('{{ stats.heatmap_data|tojson|safe if stats else "[]" }}');
+        
+        new Chart(heatmapCtx, {
+            type: 'matrix',
+            data: {
+                datasets: [{
+                    label: 'Coffee Activity',
+                    data: days.flatMap((day, i) => 
+                        hours.map((hour, j) => ({
+                            x: hour,
+                            y: day,
+                            v: heatmapData[i][j] || 0
+                        }))
+                    ),
+                    backgroundColor(context) {
+                        const value = context.dataset.data[context.dataIndex].v;
+                        const alpha = value === 0 ? 0.1 : Math.min(0.2 + (value * 0.2), 1);
+                        return `rgba(59, 130, 246, ${alpha})`;
+                    },
+                    borderColor: '#1F2937',
+                    borderWidth: 1,
+                    width: ({ chart }) => {
+                        const chartWidth = (chart.chartArea || {}).width || 0;
+                        const cellWidth = Math.max((chartWidth - 40) / 24, 12);
+                        return Math.min(cellWidth, 20); // Cap maximum width
+                    },
+                    height: ({ chart }) => {
+                        const chartHeight = (chart.chartArea || {}).height || 0;
+                        const cellHeight = Math.max((chartHeight - 30) / 7, 12);
+                        return Math.min(cellHeight, 20); // Cap maximum height
+                    }
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    datalabels: {
+                        display: false
+                    },
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: items => {
+                                const item = items[0];
+                                const hour = item.label.padStart(2, '0');
+                                return `${item.dataset.data[item.dataIndex].y} at ${hour}:00`;
+                            },
+                            label: item => {
+                                const value = item.dataset.data[item.dataIndex].v;
+                                return value === 0 ? 'No coffees' : 
+                                       `${value} coffee${value !== 1 ? 's' : ''}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'linear',
+                        offset: true,
+                        min: -0.5,
+                        max: 23.5,
+                        ticks: {
+                            stepSize: window.innerWidth < 640 ? 6 : 3,
+                            callback: value => `${Math.floor(value).toString().padStart(2, '0')}:00`
+                        },
+                        grid: {
+                            display: true,
+                            drawBorder: true,
+                            drawOnChartArea: true,
+                            drawTicks: true
+                        }
+                    },
+                    y: {
+                        type: 'category',
+                        labels: days,
+                        offset: true,
+                        grid: {
+                            display: true,
+                            drawBorder: true,
+                            drawOnChartArea: true,
+                            drawTicks: true
+                        }
+                    }
+                },
+                layout: {
+                    padding: {
+                        top: 10,
+                        right: 10,
+                        bottom: 10,
+                        left: 10
+                    }
+                }
+            }
+        });
+
+        // Coffee Distribution Chart (Pie)
+        const distributionCtx = document.getElementById('distributionChart').getContext('2d');
+        const dayData = JSON.parse('{{ stats.day_of_week_counts|tojson|safe if stats else "{}" }}');
+        
+        const distributionChart = new Chart(distributionCtx, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(dayData),
+                datasets: [{
+                    data: Object.values(dayData),
+                    backgroundColor: [
+                        '#3B82F6', '#10B981', '#F59E0B', '#EF4444',
+                        '#8B5CF6', '#EC4899', '#6366F1'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: window.innerWidth < 640 ? 'bottom' : 'right',
+                        labels: {
+                            boxWidth: window.innerWidth < 640 ? 12 : 20,
+                            padding: window.innerWidth < 640 ? 10 : 20
+                        }
+                    },
+                    datalabels: {
+                        color: '#fff',
+                        formatter: (value, ctx) => {
+                            if (value === 0) return '';
+                            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((value / total) * 100).toFixed(0);
+                            return window.innerWidth < 640 && percentage < 5 ? '' : percentage + '%';
+                        },
+                        font: {
+                            size: window.innerWidth < 640 ? 10 : 12
+                        }
+                    }
+                }
+            }
+        });
+
+        // Trend period buttons
+        document.querySelectorAll('.trend-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.trend-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                const period = btn.dataset.period;
+                const now = new Date();
+                let startDate;
+                
+                switch(period) {
+                    case 'week':
+                        startDate = new Date(now.setDate(now.getDate() - 7));
+                        trendChart.options.scales.x.time.unit = 'day';
+                        break;
+                    case 'month':
+                        startDate = new Date(now.setMonth(now.getMonth() - 1));
+                        trendChart.options.scales.x.time.unit = 'day';
+                        break;
+                    case 'year':
+                        startDate = new Date(now.setFullYear(now.getFullYear() - 1));
+                        trendChart.options.scales.x.time.unit = 'month';
+                        break;
+                }
+                
+                trendChart.data.datasets[0].data = Object.entries(trendData)
+                    .filter(([date]) => new Date(date) >= startDate)
+                    .map(([date, count]) => ({
+                        x: new Date(date),
+                        y: count
+                    }))
+                    .sort((a, b) => a.x - b.x);
+                trendChart.update();
+            });
+        });
+
+        // Initialize with week view
+        document.querySelector('.trend-btn[data-period="week"]').click();
+
+        // Add window resize handler for responsive updates
+        window.addEventListener('resize', () => {
+            // Update distribution chart legend position
+            distributionChart.options.plugins.legend.position = window.innerWidth < 640 ? 'bottom' : 'right';
+            distributionChart.options.plugins.legend.labels.boxWidth = window.innerWidth < 640 ? 12 : 20;
+            distributionChart.options.plugins.legend.labels.padding = window.innerWidth < 640 ? 10 : 20;
+            
+            // Update heatmap tick spacing
+            heatmapChart.options.scales.x.ticks.stepSize = window.innerWidth < 640 ? 6 : 3;
+            
+            // Update all charts
+            trendChart.update();
+            heatmapChart.update();
+            distributionChart.update();
+        });
     </script>
 </body>
 </html> 

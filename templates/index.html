@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='../static/logo.ico') }}">
     <title>Coffee Leaderboard</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -132,20 +133,26 @@
             }
             
             .mobile-card {
-                background: #1a2332;
-                border-radius: 1rem;
+                display: flex;
+                flex-direction: column;
                 padding: 1rem;
-                margin: 1rem;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+                margin-bottom: 1rem;
+                background: rgba(31, 41, 55, 0.5);
+                border-radius: 0.5rem;
                 border: 1px solid rgba(255, 255, 255, 0.1);
             }
             
             .mobile-card-header {
-                margin-bottom: 0.75rem;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 0.5rem;
             }
             
             .mobile-card-content {
-                gap: 0.75rem;
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
             }
             
             .mobile-card img {
@@ -213,6 +220,42 @@
                 gap: 0.5rem;
             }
         }
+
+        /* Notification Animations */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+        }
+
+        .notification {
+            animation: slideIn 0.5s ease-out forwards;
+        }
+
+        .notification.hiding {
+            animation: slideOut 0.5s ease-out forwards;
+        }
+
+        .notification:hover {
+            transform: translateX(-4px);
+            transition: transform 0.2s ease-out;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen">
@@ -227,11 +270,43 @@
     <div class="coffee-beans" id="coffee-beans"></div>
 
     <div class="container mx-auto px-4 py-8 relative z-10">
-        <!-- Beta Notice -->
-        <div class="bg-blue-900/50 border border-blue-700/50 rounded-lg p-4 mb-8 text-center">
-            <p class="text-blue-200 text-sm">
-                <span class="font-semibold">🧪 Beta Notice:</span> 
-                This is a beta version and may occasionally have issues. Please be patient!
+        <!-- Notifications -->
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div id="notifications" class="fixed top-4 right-4 z-50 space-y-4 max-w-md w-full">
+            {% for message in messages %}
+            <div class="notification bg-gray-800 border-l-4 border-blue-500 rounded-lg p-4 shadow-xl transform transition-all duration-500 ease-out opacity-0 translate-x-full"
+                 style="animation: slideIn 0.5s ease-out forwards;">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        {% if 'achievement' in message.lower() %}
+                            <span class="text-2xl mr-3">🏆</span>
+                        {% elif 'success' in message.lower() or 'added' in message.lower() %}
+                            <span class="text-2xl mr-3">✅</span>
+                        {% elif 'error' in message.lower() %}
+                            <span class="text-2xl mr-3">❌</span>
+                        {% else %}
+                            <span class="text-2xl mr-3">ℹ️</span>
+                        {% endif %}
+                        <p class="text-white">{{ message }}</p>
+                    </div>
+                    <button onclick="dismissNotification(this.parentElement.parentElement)" 
+                            class="text-gray-400 hover:text-white ml-4">
+                        ×
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Health Disclaimer -->
+        <div class="bg-red-900/50 border border-red-700/50 rounded-lg p-4 mb-8 text-center">
+            <p class="text-red-200 text-sm">
+                <span class="font-semibold">⚕️ Health Notice:</span>
+                Please consume coffee responsibly. Excessive caffeine intake may lead to health issues. 
+                Consider your daily intake and consult healthcare professionals if needed.
             </p>
         </div>
 
@@ -276,43 +351,31 @@
                     </div>
                 </div>
                 <div>
-                    <label for="camera-stream" class="block text-sm font-medium text-gray-300 mb-2">Take a Coffee Photo</label>
-                    <div id="camera-container" class="fancy-file-input">
-                        <!-- Initial state -->
-                        <div id="start-camera-container" class="text-center py-4">
-                            <button type="button" id="start-camera-btn" 
-                                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4">
-                                Start Camera 📸
-                            </button>
-                            <p class="text-sm text-gray-400">We'll ask for camera permission when you click</p>
+                    <label for="photo-upload" class="block text-sm font-medium text-gray-300 mb-2">Upload a Coffee Photo</label>
+                    <div class="fancy-file-input" id="upload-container">
+                        <div class="text-center py-4">
+                            <div class="mb-4">
+                                <input type="file" name="photo" id="photo-upload" 
+                                       accept="image/*"
+                                       class="hidden"
+                                       required>
+                                <label for="photo-upload" 
+                                       class="cursor-pointer inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    Choose Photo 📸
+                                </label>
+                            </div>
+                            <div id="file-name" class="text-sm text-gray-400 mb-2 hidden">
+                                Selected: <span class="font-medium"></span>
+                            </div>
+                            <div id="preview-container" class="hidden mb-4">
+                                <img id="preview-image" class="mx-auto max-h-64 rounded-lg" alt="Preview">
+                            </div>
+                            <p class="text-sm text-gray-400">
+                                <span class="font-semibold">📸 Requirements:</span><br>
+                                • Accepted formats: PNG, JPG, JPEG, HEIC, HEIF, WEBP<br>
+                                • Maximum size: 50MB
+                            </p>
                         </div>
-
-                        <!-- Camera view (hidden initially) -->
-                        <div id="camera-view" class="hidden">
-                            <video id="camera-stream" autoplay playsinline class="w-full rounded-lg mb-2" style="max-height:300px; background:#000;"></video>
-                            <button type="button" id="capture-btn" 
-                                    class="block mx-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                Capture Photo
-                            </button>
-                        </div>
-
-                        <!-- Fallback file upload (hidden initially) -->
-                        <div id="fallback-upload" class="hidden text-center py-4">
-                            <p class="text-yellow-400 mb-4">Camera access denied. Please upload a photo instead:</p>
-                            <input type="file" name="photo" id="photo-upload" 
-                                   accept="image/*"
-                                   class="w-full text-sm text-gray-400
-                                          file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0
-                                          file:text-sm file:font-semibold file:bg-blue-600 file:text-white
-                                          hover:file:bg-blue-700">
-                        </div>
-
-                        <input type="hidden" name="photo" id="photo-data">
-                        <p class="mt-2 text-sm text-gray-400">
-                            <span class="font-semibold">📸 Requirements:</span><br>
-                            • Take a photo using your device's camera<br>
-                            • Maximum size: 50MB
-                        </p>
                     </div>
                 </div>
                 <button type="submit"
@@ -322,104 +385,185 @@
             </form>
         </div>
 
-        <!-- Leaderboard -->
-        <div class="bg-gray-800 rounded-lg shadow-xl p-6 border border-gray-700">
-            <h2 class="text-2xl font-semibold mb-6 text-blue-400 flex items-center justify-center">
-                <span class="mr-2">Current Rankings</span>
-                <span class="coffee-cup">🏆</span>
-            </h2>
-            
-            <!-- Desktop View -->
-            <div class="hidden sm:block overflow-x-auto">
-                <table class="min-w-full table-auto">
-                    <thead class="bg-gray-700">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Rank</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Name</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Coffees</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Latest Coffee</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-700">
-                        {% for entry in leaderboard %}
-                        <tr class="hover:bg-gray-700 transition-colors duration-200">
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="text-2xl">
-                                    {% if loop.index == 1 %}🥇
-                                    {% elif loop.index == 2 %}🥈
-                                    {% elif loop.index == 3 %}🥉
-                                    {% else %}{{ loop.index }}
+        <!-- Leaderboard and Featured Photos Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- Leaderboard -->
+            <div class="lg:col-span-3 bg-gray-800 rounded-lg shadow-xl p-6 border border-gray-700">
+                <h2 class="text-2xl font-semibold mb-2 text-blue-400 flex items-center justify-center">
+                    <span class="mr-2">Top 10 Coffee Champions</span>
+                    <span class="coffee-cup">🏆</span>
+                </h2>
+                <p class="text-center text-gray-400 mb-6 text-sm">Showing the top 10 coffee enthusiasts</p>
+                
+                <!-- Desktop View -->
+                <div class="hidden sm:block overflow-x-auto">
+                    <table class="min-w-full table-auto">
+                        <thead class="bg-gray-700">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Rank</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Coffees</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Latest Coffee</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-700">
+                            {% for entry in leaderboard %}
+                            <tr class="hover:bg-gray-700 transition-colors duration-200">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="text-2xl">
+                                        {% if loop.index == 1 %}🥇
+                                        {% elif loop.index == 2 %}🥈
+                                        {% elif loop.index == 3 %}🥉
+                                        {% else %}{{ loop.index }}
+                                        {% endif %}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <a href="{{ url_for('user_history', user_id=entry.id) }}" 
+                                       class="text-blue-400 hover:text-blue-300 font-medium">
+                                        {{ capitalize_name(entry.name) }}
+                                    </a>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full
+                                               {% if entry.coffee_count > 10 %}bg-purple-900 text-purple-200
+                                               {% elif entry.coffee_count > 5 %}bg-blue-900 text-blue-200
+                                               {% else %}bg-gray-600 text-gray-200{% endif %}">
+                                        {{ entry.coffee_count }} ☕
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if entry.photos %}
+                                    <a href="{{ url_for('user_history', user_id=entry.id) }}">
+                                        <img src="{{ url_for('static', filename=entry.photos[0].photo_path) }}" 
+                                             alt="Latest coffee photo" 
+                                             class="h-16 w-16 object-cover rounded-md hover:opacity-75 transition-opacity">
+                                    </a>
+                                    {% else %}
+                                    <span class="text-gray-500">No photo</span>
                                     {% endif %}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <a href="{{ url_for('user_history', user_id=entry.id) }}" 
-                                   class="text-blue-400 hover:text-blue-300 font-medium">
-                                    {{ capitalize_name(entry.name) }}
-                                </a>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full
-                                           {% if entry.coffee_count > 10 %}bg-purple-900 text-purple-200
-                                           {% elif entry.coffee_count > 5 %}bg-blue-900 text-blue-200
-                                           {% else %}bg-gray-600 text-gray-200{% endif %}">
-                                    {{ entry.coffee_count }} ☕
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                {% if entry.photos %}
-                                <a href="{{ url_for('user_history', user_id=entry.id) }}">
-                                    <img src="{{ url_for('static', filename=entry.photos[0].photo_path) }}" 
-                                         alt="Latest coffee photo" 
-                                         class="h-16 w-16 object-cover rounded-md hover:opacity-75 transition-opacity">
-                                </a>
-                                {% else %}
-                                <span class="text-gray-500">No photo</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Mobile View -->
+                <div class="sm:hidden space-y-4">
+                    {% for entry in leaderboard %}
+                    <div class="mobile-card">
+                        <div class="mobile-card-header">
+                            <span class="text-2xl">
+                                {% if loop.index == 1 %}🥇
+                                {% elif loop.index == 2 %}🥈
+                                {% elif loop.index == 3 %}🥉
+                                {% else %}{{ loop.index }}
                                 {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                            </span>
+                            <span class="px-3 py-1 text-sm font-semibold rounded-full
+                                       {% if entry.coffee_count > 10 %}bg-purple-900 text-purple-200
+                                       {% elif entry.coffee_count > 5 %}bg-blue-900 text-blue-200
+                                       {% else %}bg-gray-600 text-gray-200{% endif %}">
+                                {{ entry.coffee_count }} ☕
+                            </span>
+                        </div>
+                        <div class="mobile-card-content">
+                            <a href="{{ url_for('user_history', user_id=entry.id) }}" 
+                               class="text-blue-400 hover:text-blue-300 font-medium text-lg">
+                                {{ capitalize_name(entry.name) }}
+                            </a>
+                            {% if entry.photos %}
+                            <a href="{{ url_for('user_history', user_id=entry.id) }}">
+                                <img src="{{ url_for('static', filename=entry.photos[0].photo_path) }}" 
+                                     alt="Coffee photo" 
+                                     class="w-full h-48 object-cover rounded-lg hover:opacity-75 transition-opacity">
+                            </a>
+                            {% else %}
+                            <span class="text-sm text-gray-500">No photo</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
 
-            <!-- Mobile View -->
-            <div class="sm:hidden space-y-4">
-                {% for entry in leaderboard %}
-                <div class="mobile-card">
-                    <div class="mobile-card-header">
-                        <span class="text-2xl">
-                            {% if loop.index == 1 %}🥇
-                            {% elif loop.index == 2 %}🥈
-                            {% elif loop.index == 3 %}🥉
-                            {% else %}{{ loop.index }}
-                            {% endif %}
-                        </span>
-                        <span class="px-3 py-1 text-sm font-semibold rounded-full
-                                   {% if entry.coffee_count > 10 %}bg-purple-900 text-purple-200
-                                   {% elif entry.coffee_count > 5 %}bg-blue-900 text-blue-200
-                                   {% else %}bg-gray-600 text-gray-200{% endif %}">
-                            {{ entry.coffee_count }} ☕
-                        </span>
+            <!-- Featured Photos Sidebar -->
+            <div class="lg:col-span-1 space-y-6">
+                {% if most_recent_photo %}
+                <div class="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4">
+                    <h3 class="text-xl font-bold mb-3 gradient-text">🕒 Most Recent Photo</h3>
+                    <div class="aspect-w-16 aspect-h-9 mb-3">
+                        <img src="{{ url_for('static', filename=most_recent_photo.photo_path) }}" 
+                             alt="Most Recent Photo" 
+                             onclick="openPhotoModal(this.src)"
+                             class="rounded-lg object-cover w-full h-48 cursor-pointer hover:opacity-90 transition-opacity">
                     </div>
-                    <div class="mobile-card-content">
-                        <a href="{{ url_for('user_history', user_id=entry.id) }}" 
-                           class="text-blue-400 hover:text-blue-300 font-medium text-lg">
-                            {{ capitalize_name(entry.name) }}
-                        </a>
-                        {% if entry.photos %}
-                        <a href="{{ url_for('user_history', user_id=entry.id) }}">
-                            <img src="{{ url_for('static', filename=entry.photos[0].photo_path) }}" 
-                                 alt="Coffee photo" 
-                                 class="w-full h-48 object-cover rounded-lg hover:opacity-75 transition-opacity">
-                        </a>
-                        {% else %}
-                        <span class="text-sm text-gray-500">No photo</span>
-                        {% endif %}
-                    </div>
+                    <p class="text-sm text-gray-400">
+                        By {{ capitalize_name(most_recent_photo.entry.name) }}
+                    </p>
                 </div>
-                {% endfor %}
+                {% endif %}
+
+                {% if featured_week or featured_month %}
+                    {% if featured_week %}
+                    <div class="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4">
+                        <h3 class="text-xl font-bold mb-3 gradient-text">📸 Photo of the Week</h3>
+                        <div class="aspect-w-16 aspect-h-9 mb-3">
+                            <img src="{{ url_for('static', filename=featured_week.photo.photo_path) }}" 
+                                 alt="Photo of the Week" 
+                                 onclick="openPhotoModal(this.src)"
+                                 class="rounded-lg object-cover w-full h-48 cursor-pointer hover:opacity-90 transition-opacity">
+                        </div>
+                        <p class="text-sm text-gray-400">
+                            By {{ capitalize_name(featured_week.photo.entry.name) }}
+                        </p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if featured_month %}
+                    <div class="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4">
+                        <h3 class="text-xl font-bold mb-3 gradient-text">🏆 Photo of the Month</h3>
+                        <div class="aspect-w-16 aspect-h-9 mb-3">
+                            <img src="{{ url_for('static', filename=featured_month.photo.photo_path) }}" 
+                                 alt="Photo of the Month" 
+                                 onclick="openPhotoModal(this.src)"
+                                 class="rounded-lg object-cover w-full h-48 cursor-pointer hover:opacity-90 transition-opacity">
+                        </div>
+                        <p class="text-sm text-gray-400">
+                            By {{ capitalize_name(featured_month.photo.entry.name) }}
+                        </p>
+                    </div>
+                    {% endif %}
+                {% endif %}
             </div>
+        </div>
+
+        <!-- Find Your Ranking -->
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 border border-gray-700 mt-8 max-w-md mx-auto">
+            <h2 class="text-2xl font-semibold mb-4 text-blue-400 flex items-center justify-center">
+                <span class="mr-2">Find Your Ranking</span>
+                <span>🔍</span>
+            </h2>
+            <form action="{{ url_for('search_user') }}" method="post" class="space-y-4">
+                <div>
+                    <label for="search_name" class="block text-sm font-medium text-gray-300 mb-2">
+                        Enter Your Name
+                    </label>
+                    <input type="text" name="search_name" id="search_name" required
+                           class="fancy-input w-full rounded-lg py-3 px-4 text-white placeholder-gray-400"
+                           placeholder="First Last (exactly as entered)"
+                           pattern="^[A-Za-z\-']+ [A-Za-z\-']+$">
+                    <p class="mt-2 text-sm text-gray-400">
+                        <span class="font-semibold">💡 Note:</span> 
+                        Enter your name exactly as you used it when submitting
+                    </p>
+                </div>
+                <button type="submit"
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    Open My Profile 🎯
+                </button>
+            </form>
         </div>
     </div>
 
@@ -447,16 +591,68 @@
         </div>
     </div>
 
+    <!-- Photo Modal -->
+    <div id="photoModal" class="fixed inset-0 bg-black bg-opacity-75 hidden items-center justify-center z-50 p-4" onclick="closePhotoModal()">
+        <div class="transform transition-all duration-300 ease-out scale-95 opacity-0 w-full max-w-2xl" id="modalContent">
+            <img id="modalPhoto" class="rounded-lg w-full h-auto object-contain shadow-2xl" alt="Featured photo" style="max-height: 600px;">
+        </div>
+    </div>
+
     <script>
+        // Notification handling
+        function dismissNotification(notification) {
+            notification.classList.add('hiding');
+            setTimeout(() => {
+                notification.remove();
+            }, 500);
+        }
+
+        // Auto-dismiss notifications after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const notifications = document.querySelectorAll('.notification');
+            notifications.forEach(notification => {
+                setTimeout(() => {
+                    if (notification && notification.parentElement) {
+                        dismissNotification(notification);
+                    }
+                }, 5000);
+            });
+        });
+
         // Handle name input - convert to title case as user types
         const nameInput = document.getElementById('name');
         const submitForm = document.getElementById('submitForm');
+        const photoUpload = document.getElementById('photo-upload');
+        const fileNameDisplay = document.getElementById('file-name');
+        const previewContainer = document.getElementById('preview-container');
+        const previewImage = document.getElementById('preview-image');
         
         nameInput.addEventListener('input', function(e) {
             // Convert to title case (capitalize first letter of each word)
             this.value = this.value.replace(/\w\S*/g, function(txt) {
                 return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
             });
+        });
+
+        // Handle file selection
+        photoUpload.addEventListener('change', function(e) {
+            const file = this.files[0];
+            if (file) {
+                // Show file name
+                fileNameDisplay.querySelector('span').textContent = file.name;
+                fileNameDisplay.classList.remove('hidden');
+                
+                // Show preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImage.src = e.target.result;
+                    previewContainer.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                fileNameDisplay.classList.add('hidden');
+                previewContainer.classList.add('hidden');
+            }
         });
 
         // Create falling coffee beans background
@@ -481,116 +677,6 @@
         for (let i = 0; i < 10; i++) {
             createCoffeeBean();
         }
-
-        // Camera capture code start
-        const startCameraBtn = document.getElementById('start-camera-btn');
-        const startCameraContainer = document.getElementById('start-camera-container');
-        const cameraView = document.getElementById('camera-view');
-        const fallbackUpload = document.getElementById('fallback-upload');
-        const video = document.getElementById('camera-stream');
-        const captureButton = document.getElementById('capture-btn');
-        const photoDataInput = document.getElementById('photo-data');
-        const photoUpload = document.getElementById('photo-upload');
-        
-        // Start camera button click handler
-        startCameraBtn.addEventListener('click', function() {
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-                    .then(function(stream) {
-                        video.srcObject = stream;
-                        video.play();
-                        // Show camera view, hide other elements
-                        startCameraContainer.classList.add('hidden');
-                        cameraView.classList.remove('hidden');
-                        fallbackUpload.classList.add('hidden');
-                    })
-                    .catch(function(error) {
-                        console.error('Error accessing the camera: ', error);
-                        // Show fallback upload if camera access denied
-                        startCameraContainer.classList.add('hidden');
-                        cameraView.classList.add('hidden');
-                        fallbackUpload.classList.remove('hidden');
-                    });
-            } else {
-                // Show fallback if getUserMedia not supported
-                startCameraContainer.classList.add('hidden');
-                cameraView.classList.add('hidden');
-                fallbackUpload.classList.remove('hidden');
-            }
-        });
-        
-        // Capture button click handler
-        captureButton.addEventListener('click', function() {
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-            photoDataInput.value = imageDataUrl;
-            
-            // Visual feedback that photo was captured
-            captureButton.textContent = '✓ Photo Captured!';
-            captureButton.classList.add('bg-green-600', 'hover:bg-green-700');
-            captureButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
-        });
-
-        // File upload handler
-        photoUpload.addEventListener('change', function(e) {
-            if (e.target.files && e.target.files[0]) {
-                const file = e.target.files[0];
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    photoDataInput.value = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-
-        // Form submission handler
-        submitForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            // Get the base64 data from the hidden input
-            const base64Data = photoDataInput.value;
-            
-            // If we have base64 data from camera or file reader
-            if (base64Data && base64Data.startsWith('data:image')) {
-                // Convert base64 to blob
-                fetch(base64Data)
-                    .then(res => res.blob())
-                    .then(blob => {
-                        // Create a File object
-                        const file = new File([blob], 'camera_photo.jpg', { type: 'image/jpeg' });
-                        
-                        // Create a new FormData object
-                        const formData = new FormData();
-                        formData.append('name', nameInput.value);
-                        formData.append('photo', file);
-                        
-                        // Submit the form data via fetch
-                        fetch(submitForm.action, {
-                            method: 'POST',
-                            body: formData
-                        })
-                        .then(response => {
-                            if (response.redirected) {
-                                window.location.href = response.url;
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            alert('Error uploading photo. Please try again.');
-                        });
-                    });
-            } else if (photoUpload.files && photoUpload.files[0]) {
-                // If we have a file from the file input, submit the form normally
-                this.submit();
-            } else {
-                alert('Please capture a photo or select a file to upload.');
-            }
-        });
-        // Camera capture code end
 
         // Level Up Modal
         function showLevelUpModal() {
@@ -622,6 +708,41 @@
         {% if session.get('level_up') %}
             showLevelUpModal();
         {% endif %}
+
+        // Photo modal functions
+        function openPhotoModal(src) {
+            const modal = document.getElementById('photoModal');
+            const modalContent = document.getElementById('modalContent');
+            const modalPhoto = document.getElementById('modalPhoto');
+            modalPhoto.src = src;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            // Trigger animation after a brief delay
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function closePhotoModal() {
+            const modal = document.getElementById('photoModal');
+            const modalContent = document.getElementById('modalContent');
+            // Animate out
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            // Hide modal after animation
+            setTimeout(() => {
+                modal.classList.remove('flex');
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        // Close photo modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closePhotoModal();
+            }
+        });
     </script>
 </body>
 </html> 
