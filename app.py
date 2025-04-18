@@ -131,7 +131,7 @@ SUBSTITUTIONS = {
     'n': ['η', 'п'],
     'r': ['я'],
     'x': ['×'],
-    'y': ['ү', 'у'],
+    'y': ['ү', 'у']
 }
 
 def normalize_text(text):

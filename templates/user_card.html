@@ -294,65 +294,128 @@
 
         /* Card background patterns based on level */
         .card[data-color-scheme='rainbow'] .card-inner {
-            background: linear-gradient(45deg, 
-                rgba(255, 0, 0, 0.1),
-                rgba(255, 165, 0, 0.1),
-                rgba(255, 255, 0, 0.1),
-                rgba(0, 255, 0, 0.1),
-                rgba(0, 0, 255, 0.1),
-                rgba(75, 0, 130, 0.1),
-                rgba(143, 0, 255, 0.1)
-            );
+            background: 
+                linear-gradient(45deg, 
+                    rgba(255, 0, 0, 0.15),
+                    rgba(255, 165, 0, 0.15),
+                    rgba(255, 255, 0, 0.15),
+                    rgba(0, 255, 0, 0.15),
+                    rgba(0, 0, 255, 0.15),
+                    rgba(75, 0, 130, 0.15),
+                    rgba(143, 0, 255, 0.15)
+                ),
+                repeating-linear-gradient(
+                    -45deg,
+                    transparent,
+                    transparent 10px,
+                    rgba(255, 255, 255, 0.05) 10px,
+                    rgba(255, 255, 255, 0.05) 20px
+                );
         }
 
         .card[data-color-scheme='mythic'] .card-inner {
-            background: radial-gradient(circle at 50% 50%,
-                rgba(255, 215, 0, 0.15) 0%,
-                rgba(148, 0, 211, 0.15) 50%,
-                rgba(255, 105, 180, 0.15) 100%
-            );
+            background: 
+                radial-gradient(circle at 50% 50%,
+                    rgba(255, 215, 0, 0.2) 0%,
+                    rgba(148, 0, 211, 0.2) 50%,
+                    rgba(255, 105, 180, 0.2) 100%
+                ),
+                repeating-conic-gradient(
+                    from 0deg,
+                    rgba(255, 215, 0, 0.1) 0deg 30deg,
+                    transparent 30deg 60deg
+                );
         }
 
         .card[data-color-scheme='crystal'] .card-inner {
             background: 
-                linear-gradient(135deg, transparent 0%, rgba(230, 230, 250, 0.1) 50%, transparent 100%),
-                linear-gradient(45deg, transparent 0%, rgba(135, 206, 235, 0.1) 50%, transparent 100%);
+                linear-gradient(135deg, transparent 0%, rgba(230, 230, 250, 0.15) 50%, transparent 100%),
+                linear-gradient(45deg, transparent 0%, rgba(135, 206, 235, 0.15) 50%, transparent 100%),
+                repeating-linear-gradient(
+                    60deg,
+                    transparent,
+                    transparent 20px,
+                    rgba(255, 255, 255, 0.03) 20px,
+                    rgba(255, 255, 255, 0.03) 40px
+                );
         }
 
         .card[data-color-scheme='gold'] .card-inner {
             background: 
-                linear-gradient(45deg, transparent 0%, rgba(255, 215, 0, 0.1) 50%, transparent 100%),
-                radial-gradient(circle at 50% 50%, rgba(218, 165, 32, 0.15) 0%, transparent 100%);
+                linear-gradient(45deg, transparent 0%, rgba(255, 215, 0, 0.15) 50%, transparent 100%),
+                radial-gradient(circle at 50% 50%, rgba(218, 165, 32, 0.2) 0%, transparent 100%),
+                repeating-linear-gradient(
+                    -45deg,
+                    transparent,
+                    transparent 15px,
+                    rgba(255, 215, 0, 0.05) 15px,
+                    rgba(255, 215, 0, 0.05) 30px
+                );
         }
 
         .card[data-color-scheme='silver'] .card-inner {
             background: 
-                linear-gradient(135deg, transparent 0%, rgba(192, 192, 192, 0.1) 50%, transparent 100%),
-                linear-gradient(45deg, transparent 0%, rgba(230, 230, 250, 0.1) 50%, transparent 100%);
+                linear-gradient(135deg, transparent 0%, rgba(192, 192, 192, 0.15) 50%, transparent 100%),
+                linear-gradient(45deg, transparent 0%, rgba(230, 230, 250, 0.15) 50%, transparent 100%),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 20px,
+                    rgba(255, 255, 255, 0.03) 20px,
+                    rgba(255, 255, 255, 0.03) 40px
+                );
         }
 
         .card[data-color-scheme='emerald'] .card-inner {
             background: 
-                linear-gradient(45deg, transparent 0%, rgba(80, 200, 120, 0.1) 50%, transparent 100%),
-                radial-gradient(circle at 50% 50%, rgba(60, 179, 113, 0.15) 0%, transparent 100%);
+                linear-gradient(45deg, transparent 0%, rgba(80, 200, 120, 0.15) 50%, transparent 100%),
+                radial-gradient(circle at 50% 50%, rgba(60, 179, 113, 0.2) 0%, transparent 100%),
+                repeating-linear-gradient(
+                    30deg,
+                    transparent,
+                    transparent 20px,
+                    rgba(80, 200, 120, 0.05) 20px,
+                    rgba(80, 200, 120, 0.05) 40px
+                );
         }
 
         .card[data-color-scheme='sapphire'] .card-inner {
             background: 
-                linear-gradient(135deg, transparent 0%, rgba(8, 37, 103, 0.1) 50%, transparent 100%),
-                linear-gradient(45deg, transparent 0%, rgba(65, 105, 225, 0.1) 50%, transparent 100%);
+                linear-gradient(135deg, transparent 0%, rgba(8, 37, 103, 0.15) 50%, transparent 100%),
+                linear-gradient(45deg, transparent 0%, rgba(65, 105, 225, 0.15) 50%, transparent 100%),
+                repeating-radial-gradient(
+                    circle at 50% 50%,
+                    transparent,
+                    transparent 20px,
+                    rgba(65, 105, 225, 0.05) 20px,
+                    rgba(65, 105, 225, 0.05) 40px
+                );
         }
 
         .card[data-color-scheme='ruby'] .card-inner {
             background: 
-                linear-gradient(45deg, transparent 0%, rgba(224, 17, 95, 0.1) 50%, transparent 100%),
-                radial-gradient(circle at 50% 50%, rgba(255, 105, 180, 0.15) 0%, transparent 100%);
+                linear-gradient(45deg, transparent 0%, rgba(224, 17, 95, 0.15) 50%, transparent 100%),
+                radial-gradient(circle at 50% 50%, rgba(255, 105, 180, 0.2) 0%, transparent 100%),
+                repeating-linear-gradient(
+                    -60deg,
+                    transparent,
+                    transparent 15px,
+                    rgba(224, 17, 95, 0.05) 15px,
+                    rgba(224, 17, 95, 0.05) 30px
+                );
         }
 
         .card[data-color-scheme='copper'] .card-inner {
             background: 
-                linear-gradient(135deg, transparent 0%, rgba(184, 115, 51, 0.1) 50%, transparent 100%),
-                linear-gradient(45deg, transparent 0%, rgba(205, 127, 50, 0.1) 50%, transparent 100%);
+                linear-gradient(135deg, transparent 0%, rgba(184, 115, 51, 0.15) 50%, transparent 100%),
+                linear-gradient(45deg, transparent 0%, rgba(205, 127, 50, 0.15) 50%, transparent 100%),
+                repeating-linear-gradient(
+                    120deg,
+                    transparent,
+                    transparent 20px,
+                    rgba(184, 115, 51, 0.05) 20px,
+                    rgba(184, 115, 51, 0.05) 40px
+                );
         }
 
         .card[data-color-scheme='bronze'] .card-inner {
@@ -361,35 +424,33 @@
                 radial-gradient(circle at 50% 50%, rgba(139, 69, 19, 0.15) 0%, transparent 100%);
         }
 
+        /* Enhanced animation effects for higher level cards */
+        @keyframes mythic-shimmer {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 100% 50%; }
+        }
+
+        .card[data-color-scheme='rainbow'] .card-inner,
+        .card[data-color-scheme='mythic'] .card-inner,
+        .card[data-color-scheme='crystal'] .card-inner {
+            animation: mythic-shimmer 6s linear infinite;
+            background-size: 200% 200%;
+        }
+
         /* Enhanced border glow effects */
         .card[data-color-scheme='rainbow'] .card-border {
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 25px rgba(255, 255, 255, 0.4);
             animation: rainbow-glow 6s linear infinite;
         }
 
         .card[data-color-scheme='mythic'] .card-border {
-            box-shadow: 0 0 25px rgba(255, 215, 0, 0.3);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
             animation: mythic-glow 4s ease infinite;
         }
 
         .card[data-color-scheme='crystal'] .card-border {
-            box-shadow: 0 0 15px rgba(230, 230, 250, 0.3);
+            box-shadow: 0 0 20px rgba(230, 230, 250, 0.4);
             animation: crystal-glow 5s ease-in-out infinite;
-        }
-
-        @keyframes rainbow-glow {
-            0% { filter: hue-rotate(0deg); }
-            100% { filter: hue-rotate(360deg); }
-        }
-
-        @keyframes mythic-glow {
-            0%, 100% { box-shadow: 0 0 25px rgba(255, 215, 0, 0.3); }
-            50% { box-shadow: 0 0 35px rgba(255, 105, 180, 0.3); }
-        }
-
-        @keyframes crystal-glow {
-            0%, 100% { box-shadow: 0 0 15px rgba(230, 230, 250, 0.3); }
-            50% { box-shadow: 0 0 25px rgba(135, 206, 235, 0.3); }
         }
 
         /* Add geometric patterns for higher level cards */
@@ -514,7 +575,13 @@
                     {% if badge_info.achievements %}
                     <div class="achievements-section mb-2">
                         <div class="achievements-grid">
-                            {% set random_achievements = (badge_info.achievements|random(2) if badge_info.achievements|length >= 2 else badge_info.achievements) %}
+                            {% if badge_info.achievements|length >= 2 %}
+                                {% set achievement1 = badge_info.achievements|random %}
+                                {% set achievement2 = (badge_info.achievements|reject('eq', achievement1)|list)|random %}
+                                {% set random_achievements = [achievement1, achievement2] %}
+                            {% else %}
+                                {% set random_achievements = badge_info.achievements %}
+                            {% endif %}
                             {% for achievement in random_achievements %}
                             <div class="achievement-badge" title="{{ achievement.description }}">
                                 <span class="emoji">{{ achievement.emoji }}</span>
